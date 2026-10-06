@@ -21,3 +21,19 @@ campus-ai-assistant/
 │   └── vision.md
 └── src/
 ```
+
+## Autor
+
+**mgr Marcin Sulecki**  
+Wydział Matematyki i Nauk Informacyjnych  
+Politechnika Warszawska
+
+© Marcin Sulecki / Politechnika Warszawska, 2026
+
+## Licencja
+
+Materiały dydaktyczne w tym repozytorium są udostępniane na licencji Creative Commons Attribution 4.0 International (CC BY 4.0).
+
+Kod źródłowy przykładów jest udostępniany na licencji MIT.
+
+Materiały pochodzące z zewnętrznych źródeł podlegają licencjom i prawom ich odpowiednich autorów.
