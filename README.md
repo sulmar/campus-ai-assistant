@@ -18,7 +18,9 @@ Na początek:
 campus-ai-assistant/
 ├── README.md
 ├── docs/
-│   └── vision.md
+│   ├── vision.md
+│   ├── glossary.md
+│   └── requirements.md
 └── src/
 ```
 
