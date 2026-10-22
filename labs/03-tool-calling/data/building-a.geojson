@@ -1,0 +1,58 @@
+{
+  "type": "FeatureCollection",
+  "name": "Budynek A",
+  "description": "Fikcyjne dane demonstracyjne. Lokalny układ współrzędnych w metrach: x rośnie na wschód, y rośnie na północ.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "id": "A", "kind": "building", "name": "Budynek A" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[0, 0], [24, 0], [24, 60], [0, 60], [0, 0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "A1", "kind": "entrance", "buildingId": "A", "name": "Wejście A1" },
+      "geometry": { "type": "Point", "coordinates": [0, 30] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "A2", "kind": "entrance", "buildingId": "A", "name": "Wejście A2" },
+      "geometry": { "type": "Point", "coordinates": [12, 0] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "A3", "kind": "entrance", "buildingId": "A", "name": "Wejście A3" },
+      "geometry": { "type": "Point", "coordinates": [24, 30] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "A-P1", "kind": "parking", "name": "Parking" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-45, 12], [-12, 12], [-12, 48], [-45, 48], [-45, 12]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "A-S1", "kind": "path", "name": "Ścieżka piesza 1" },
+      "geometry": { "type": "LineString", "coordinates": [[-12, 30], [0, 30]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "A-S2", "kind": "path", "name": "Ścieżka piesza 2" },
+      "geometry": { "type": "LineString", "coordinates": [[12, -25], [12, 0]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "A-S3", "kind": "path", "name": "Ścieżka piesza 3" },
+      "geometry": { "type": "LineString", "coordinates": [[24, 30], [46, 30]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "A-L1", "kind": "landmark", "name": "Przystanek autobusowy" },
+      "geometry": { "type": "Point", "coordinates": [48, 30] }
+    }
+  ]
+}

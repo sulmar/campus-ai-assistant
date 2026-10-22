@@ -12,6 +12,10 @@ Na początek:
 
 - [Wizja](docs/vision.md)
 
+## Laboratoria
+
+- [03 · Tool Calling](labs/03-tool-calling/README.md) — agent Tup Żak wybiera wejście do budynku na podstawie geometrii GeoJSON (.NET 10, Microsoft.Extensions.AI, Ollama, Leaflet)
+
 ## Struktura
 
 ```text
@@ -21,6 +25,8 @@ campus-ai-assistant/
 │   ├── vision.md
 │   ├── glossary.md
 │   └── requirements.md
+├── labs/
+│   └── 03-tool-calling/
 └── src/
 ```
 
