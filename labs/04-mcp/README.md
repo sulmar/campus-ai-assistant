@@ -78,6 +78,8 @@ claude -p "Znajdź budynek A i zaznacz wejście od strony parkingu" \
 | `Mcp/CampusMcpServer.cs` | Rejestracja serwera MCP: `AddMcpServer().WithHttpTransport()`, nazwa i instrukcje serwera oraz filtr `tools/call`. |
 | `Mcp/CampusResources.cs` | Zasoby MCP: `tupzak://buildings` (lista budynków) i szablon `tupzak://buildings/{buildingId}` (GeoJSON budynku). |
 | `Mcp/CampusPrompts.cs` | Prompt MCP `building_entrance` z argumentami `name` i `target`. |
+| `Mcp/CampusMapApp.cs` | MCP App: narzędzie `show_building_map` powiązane z widokiem `ui://tupzak/v2/building-map.html`. |
+| `Mcp/BuildingMapView.html` | Widok MCP App (osadzony w assembly): rysuje GeoJSON budynku jako SVG w rozmowie. |
 | `Mcp/McpActivityLog.cs` | Dziennik wywołań przez MCP, który przeglądarka odczytuje cyklicznie. |
 | `Program.cs` | `AddCampusMcpServer()`, `app.MapMcp("/mcp")`, endpoint `GET /api/mcp/activity?after={n}`. |
 | `wwwroot/app.js` | Odpytywanie `/api/mcp/activity` co sekundę: wywołania pokazywane w panelu przebiegu i odświeżanie mapy. |
@@ -108,6 +110,7 @@ MCP pozwala opisać charakter narzędzia. Host może z tego skorzystać, np. prz
 | `find_building` | Znajdź budynek | `readOnlyHint`, `idempotentHint` |
 | `get_building_geometry` | Pobierz geometrię budynku | `idempotentHint` (ustawia fokus mapy, więc nie jest tylko do odczytu) |
 | `mark_entrance` | Zaznacz wejście na mapie | `idempotentHint`, `destructiveHint: false` |
+| `show_building_map` | Pokaż mapę budynku | `readOnlyHint`, `idempotentHint`; tylko w MCP, poza Agent Loop |
 
 ### Zasoby MCP
 
@@ -126,9 +129,43 @@ Prompt to szablon wiadomości z parametrami (`prompts/list`, `prompts/get`). Wyb
 
 | Prompt | Argumenty | Działanie |
 |---|---|---|
-| `building_entrance` | `name` (nazwa lub identyfikator budynku), `target` (obiekt w otoczeniu) | Prowadzi model przez `find_building` → `get_building_geometry` → `mark_entrance`; przy niejednoznaczności każe zapytać użytkownika. |
+| `building_entrance` | `name` (nazwa lub identyfikator budynku), `target` (obiekt w otoczeniu albo identyfikator wejścia) | Prowadzi model przez `find_building` → `get_building_geometry` → `mark_entrance`; przy niejednoznaczności każe zapytać użytkownika. Gdy `target` jest identyfikatorem wejścia tego budynku, prompt od razu każe zaznaczyć to wejście. |
 
-W Claude Code prompt jest dostępny jako polecenie, np. `/mcp__tupzak__building_entrance "Budynek A" parking`.
+W Claude Code prompt jest dostępny jako polecenie, np. `/mcp__tupzak__building_entrance "Budynek A" parking` albo `/mcp__tupzak__building_entrance C C1`.
+
+Prompt jest generowany po stronie serwera, więc może korzystać z danych: sprawdza w `BuildingRepository`, czy `target` to wejście budynku `name`. Treść wiadomości zależy od argumentów, a nie tylko podstawia je do stałego szablonu.
+
+### MCP App: mapa w rozmowie
+
+[MCP Apps](https://modelcontextprotocol.io/extensions/apps) (rozszerzenie `io.modelcontextprotocol/ui`) pozwala serwerowi dostarczyć interfejs, który host wyświetla bezpośrednio w rozmowie:
+
+1. Narzędzie `show_building_map` ma w `_meta.ui.resourceUri` wskazany zasób `ui://tupzak/v2/building-map.html` (atrybut `[McpAppUi]` i `.WithMcpApps()` z pakietu `ModelContextProtocol.Extensions.Apps`).
+2. Zasób to HTML z MIME `text/html;profile=mcp-app`. Host wczytuje go przez `resources/read` i renderuje w sandboxowanym iframe.
+3. Widok wymienia z hostem komunikaty JSON-RPC przez `postMessage`: `ui/initialize` → `ui/notifications/initialized` → `ui/notifications/tool-result`.
+4. Wynik narzędzia ma dwie części: `content` (krótki tekst dla modelu i hostów bez MCP Apps) oraz `structuredContent` z GeoJSON-em, który rysuje widok, a który nie trafia do kontekstu modelu.
+
+Host zapamiętuje widok po URI i nie pobiera go ponownie przy kolejnych wywołaniach. Po zmianie `BuildingMapView.html` trzeba więc podbić wersję w `CampusMapApp.MapViewUri` (`ui://tupzak/v2/…` → `v3`). Log aplikacji pokazuje przy każdym `show_building_map`, czy klient zgłasza obsługę MCP Apps, a wpis `resources/read` oznacza, że host pobrał widok.
+
+Widok nie korzysta z CDN ani Leafleta, bo domyślne CSP hosta dopuszcza tylko skrypty i style inline. Mapa jest rysowana jako SVG w tych samych kolorach co w przeglądarce.
+
+| Narzędzie | Argumenty | Działanie |
+|---|---|---|
+| `show_building_map` | `buildingId`, opcjonalnie `entranceId` | Wyświetla mapę budynku z otoczeniem i wyróżnia wskazane wejście. Nie zmienia stanu mapy w przeglądarce. |
+
+**Claude Code w terminalu nie wyświetla MCP Apps** i pokazuje tylko tekstowy wynik narzędzia. Mapę w rozmowie zobaczysz w **Claude Desktop**. Claude Desktop łączy się z lokalnymi serwerami przez stdio, więc potrzebny jest most `mcp-remote` (wymaga Node.js). W pliku `~/Library/Application Support/Claude/claude_desktop_config.json` (Windows: `%APPDATA%\Claude\claude_desktop_config.json`) dodaj:
+
+```json
+{
+  "mcpServers": {
+    "tupzak": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:5144/mcp"]
+    }
+  }
+}
+```
+
+Uruchom aplikację, zrestartuj Claude Desktop i zapytaj np. „Pokaż mapę budynku A z wejściem od strony parkingu”.
 
 ### Instrukcje serwera
 

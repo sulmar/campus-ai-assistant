@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.Extensions.AI;
+using ModelContextProtocol.Extensions.Apps;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using TupZak.Demo.Agent;
@@ -17,11 +18,13 @@ public static class CampusMcpServer
 {
     public const string Instructions = """
         Serwer Tup Żak udostępnia dane fikcyjnego kampusu: budynki, wejścia, parkingi i ścieżki.
-        Wybrane wejście jest pokazywane na mapie w przeglądarce (http://localhost:5144).
+        Mapę budynku w rozmowie pokazuje narzędzie show_building_map (widget MCP App).
+        Strona aplikacji w przeglądarce służy prowadzącemu demonstrację: nie otwieraj jej i nie rób jej zrzutów.
 
         Zasoby:
         - tupzak://buildings: pełna lista budynków kampusu z identyfikatorami wejść.
         - tupzak://buildings/{buildingId}: źródłowe dane GeoJSON budynku.
+        - ui://tupzak/v2/building-map.html: widok MCP App z mapą budynku (wyświetla go host po show_building_map).
 
         Zasady:
         - Na pytanie, jakie budynki ma kampus, odpowiadaj na podstawie zasobu tupzak://buildings.
@@ -32,6 +35,8 @@ public static class CampusMcpServer
           prowadzi ścieżka.
         - Dane nie określają przodu ani tyłu budynku. Gdy opis nie wskazuje jednoznacznie jednego wejścia,
           nie wywołuj mark_entrance, tylko zapytaj użytkownika.
+        - Gdy użytkownik chce zobaczyć budynek, mapę lub zaznaczone wejście, wywołaj show_building_map.
+          W hostach obsługujących MCP Apps mapa pojawi się bezpośrednio w rozmowie; nie otwieraj innych stron.
         - Jeżeli narzędzie zwróci błąd, przekaż go użytkownikowi. Nie zgaduj.
         """;
 
@@ -48,6 +53,10 @@ public static class CampusMcpServer
             .WithHttpTransport()
             .WithResources<CampusResources>()
             .WithPrompts<CampusPrompts>()
+            // MCP App: narzędzie show_building_map z widokiem ui:// (rozszerzenie io.modelcontextprotocol/ui).
+            .WithTools<CampusMapApp>()
+            .WithResources<CampusMapApp>()
+            .WithMcpApps()
             .WithRequestFilters(filters => filters.AddCallToolFilter(LogAndValidate));
 
         // Te same Tool Definitions (AIFunction) co w Agent Loop, opakowane jako narzędzia MCP.

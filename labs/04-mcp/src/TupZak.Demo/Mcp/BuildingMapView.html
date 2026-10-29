@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mapa budynku</title>
+  <style>
+    /* Zmienne hosta (MCP Apps) z wartościami domyślnymi, gdy host ich nie przekaże. */
+    :root {
+      --bg: var(--color-background-primary, #ffffff);
+      --fg: var(--color-text-primary, #0f172a);
+      --muted: var(--color-text-secondary, #64748b);
+      --font: var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
+      color-scheme: light dark;
+    }
+    :root[data-theme="dark"] {
+      --bg: var(--color-background-primary, #1e1e1e);
+      --fg: var(--color-text-primary, #f1f5f9);
+      --muted: var(--color-text-secondary, #94a3b8);
+    }
+    html, body { margin: 0; background: var(--bg); color: var(--fg); font: 13px/1.4 var(--font); }
+    #status { padding: 12px; color: var(--muted); }
+    #status.error { color: #dc2626; }
+    svg { display: block; width: 100%; height: auto; }
+    .label { font-size: 11px; fill: var(--fg); paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+    .label.minor { fill: var(--muted); }
+    .label.entrance { font-weight: 700; fill: #1d4ed8; }
+  </style>
+</head>
+<body>
+<!-- Widget pokazuje tylko mapę; nazwę budynku i wejście model podaje w tekście odpowiedzi. -->
+<div id="status">Oczekiwanie na wynik narzędzia…</div>
+<svg id="map" hidden></svg>
+<script>
+  // ---------- JSON-RPC przez postMessage z hostem MCP Apps ----------
+
+  const pending = new Map();
+  let nextId = 1;
+
+  function send(message) { window.parent.postMessage({ jsonrpc: '2.0', ...message }, '*'); }
+
+  function request(method, params) {
+    const id = nextId++;
+    send({ id, method, params });
+    return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+  }
+
+  window.addEventListener('message', event => {
+    const msg = event.data;
+    if (!msg || msg.jsonrpc !== '2.0') return;
+
+    if (msg.id !== undefined && !msg.method) {              // odpowiedź na nasze żądanie
+      const p = pending.get(msg.id);
+      pending.delete(msg.id);
+      msg.error ? p?.reject(msg.error) : p?.resolve(msg.result);
+      return;
+    }
+
+    switch (msg.method) {
+      case 'ui/notifications/tool-result': renderResult(msg.params); break;
+      case 'ui/notifications/tool-cancelled': setStatus('Wywołanie narzędzia anulowano.', true); break;
+      case 'ui/notifications/host-context-changed': applyHostContext(msg.params); break;
+    }
+    if (msg.id !== undefined && msg.method) send({ id: msg.id, result: {} });  // np. ping, ui/resource-teardown
+  });
+
+  function applyHostContext(context) {
+    if (!context) return;
+    if (context.theme) document.documentElement.dataset.theme = context.theme;
+    for (const [name, value] of Object.entries(context.styles?.variables ?? {}))
+      if (value) document.documentElement.style.setProperty(name, value);
+  }
+
+  new ResizeObserver(() => {
+    const { width, height } = document.documentElement.getBoundingClientRect();
+    send({ method: 'ui/notifications/size-changed', params: { width: Math.ceil(width), height: Math.ceil(height) } });
+  }).observe(document.documentElement);
+
+  request('ui/initialize', {
+    protocolVersion: '2026-01-26',
+    appInfo: { name: 'tupzak-building-map', version: '1.0.0' },
+    appCapabilities: {},
+  }).then(result => {
+    applyHostContext(result?.hostContext);
+    send({ method: 'ui/notifications/initialized', params: {} });
+  }).catch(error => setStatus(`Błąd inicjalizacji: ${error?.message ?? error}`, true));
+
+  // ---------- rysowanie GeoJSON (lokalne współrzędne w metrach, y rośnie na północ) ----------
+
+  const styles = {
+    building: { stroke: '#334155', width: 2, fill: '#cbd5e1' },
+    parking: { stroke: '#6b7280', width: 2, dash: '6 4', fill: '#e5e7eb' },
+    courtyard: { stroke: '#16a34a', width: 2, fill: '#bbf7d0' },
+    path: { stroke: '#a16207', width: 3, dash: '6 6', fill: 'none' },
+  };
+
+  function setStatus(text, isError = false) {
+    const status = document.getElementById('status');
+    status.textContent = text;
+    status.className = isError ? 'error' : '';
+    status.hidden = !text;
+  }
+
+  function renderResult(result) {
+    const text = (result?.content ?? []).filter(c => c.type === 'text').map(c => c.text).join('');
+    if (result?.isError) {
+      let message = text;
+      try { message = JSON.parse(text).error ?? text; } catch { }
+      return setStatus(message || 'Narzędzie zwróciło błąd.', true);
+    }
+    const data = result?.structuredContent;
+    if (!data?.geojson) return setStatus(text || 'Brak danych GeoJSON w wyniku narzędzia.', true);
+
+    setStatus('');
+    draw(data.geojson, data.entranceId);
+  }
+
+  function draw(geojson, markedEntranceId) {
+    const features = geojson.features ?? [];
+    const rings = f => f.geometry.type === 'Polygon' ? f.geometry.coordinates
+      : f.geometry.type === 'LineString' ? [f.geometry.coordinates] : [[f.geometry.coordinates]];
+    const all = features.flatMap(f => rings(f).flat());
+    const minX = Math.min(...all.map(p => p[0])), maxX = Math.max(...all.map(p => p[0]));
+    const minY = Math.min(...all.map(p => p[1])), maxY = Math.max(...all.map(p => p[1]));
+
+    const width = 640, pad = 40;
+    const scale = (width - 2 * pad) / Math.max(maxX - minX, 1);
+    const height = Math.min((maxY - minY) * scale + 2 * pad, 900);
+    const s = Math.min(scale, (height - 2 * pad) / Math.max(maxY - minY, 1));
+    const px = ([x, y]) => [pad + (x - minX) * s, height - pad - (y - minY) * s];
+    const pts = coords => coords.map(p => px(p).map(v => v.toFixed(1)).join(',')).join(' ');
+
+    const kindOrder = { parking: 0, courtyard: 1, path: 2, building: 3, landmark: 4, entrance: 5 };
+    const sorted = [...features].sort((a, b) => (kindOrder[a.properties.kind] ?? 9) - (kindOrder[b.properties.kind] ?? 9));
+    const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+    const parts = sorted.map(f => {
+      const { kind, id, name } = f.properties;
+      const st = styles[kind] ?? {};
+      const dash = st.dash ? ` stroke-dasharray="${st.dash}"` : '';
+      const title = `<title>${esc(id)} · ${esc(name)}</title>`;
+
+      if (f.geometry.type === 'Polygon') {
+        const ring = f.geometry.coordinates[0];
+        const vertices = ring.slice(0, -1);  // ostatni punkt pierścienia powtarza pierwszy
+        const [cx, cy] = px([vertices.reduce((a, p) => a + p[0], 0) / vertices.length, vertices.reduce((a, p) => a + p[1], 0) / vertices.length]);
+        const polygon = `<polygon points="${pts(ring)}" fill="${st.fill}" stroke="${st.stroke}" stroke-width="${st.width}"${dash}>${title}</polygon>`;
+        if (kind === 'building') {
+          // Nazwa nad obrysem (środek wielokąta w kształcie L może leżeć poza nim), jak w app.js.
+          const [, top] = px([0, Math.max(...vertices.map(p => p[1]))]);
+          const [left] = px([Math.min(...vertices.map(p => p[0])), 0]);
+          return `<g>${polygon}<text class="label" x="${left}" y="${top - 8}">${esc(name)}</text></g>`;
+        }
+        return `<g>${polygon}<text class="label minor" x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle">${esc(kind === 'parking' ? 'P' : name)}</text></g>`;
+      }
+      if (f.geometry.type === 'LineString')
+        return `<polyline points="${pts(f.geometry.coordinates)}" fill="none" stroke="${st.stroke}" stroke-width="${st.width}"${dash}>${title}</polyline>`;
+
+      const [x, y] = px(f.geometry.coordinates);
+      if (kind === 'entrance') {
+        const marked = id === markedEntranceId;
+        return `<g>${marked ? `<circle cx="${x}" cy="${y}" r="16" fill="#1d4ed8" fill-opacity="0.2" stroke="#1d4ed8" stroke-width="2"/>` : ''}`
+          + `<circle cx="${x}" cy="${y}" r="7" fill="${marked ? '#1d4ed8' : '#fff'}" stroke="#1d4ed8" stroke-width="3">${title}</circle>`
+          + `<text class="label entrance" x="${x}" y="${y - (marked ? 20 : 12)}" text-anchor="middle">${esc(id)}</text></g>`;
+      }
+      return `<g><circle cx="${x}" cy="${y}" r="6" fill="#ddd6fe" stroke="#7c3aed" stroke-width="2">${title}</circle>`
+        + (x > width / 2  // etykieta po stronie środka mapy, żeby nie wychodziła poza krawędź
+          ? `<text class="label minor" x="${x - 9}" y="${y}" text-anchor="end" dominant-baseline="middle">${esc(name)}</text></g>`
+          : `<text class="label minor" x="${x + 9}" y="${y}" dominant-baseline="middle">${esc(name)}</text></g>`);
+    });
+
+    // Strzałka północy i podziałka 10 m.
+    const bar = 10 * s;
+    parts.push(`<g class="label minor"><text x="${width - 16}" y="20" text-anchor="middle">N</text>`
+      + `<path d="M${width - 16} 24 l-5 12 h10 z" fill="currentColor"/></g>`
+      + `<g><line x1="12" y1="${height - 12}" x2="${12 + bar}" y2="${height - 12}" stroke="currentColor" stroke-width="2"/>`
+      + `<text class="label minor" x="${16 + bar}" y="${height - 12}" dominant-baseline="middle">10 m</text></g>`);
+
+    const svg = document.getElementById('map');
+    svg.setAttribute('viewBox', `0 0 ${width} ${height.toFixed(0)}`);
+    svg.style.color = 'var(--muted)';
+    svg.innerHTML = parts.join('');
+    svg.hidden = false;
+  }
+</script>
+</body>
+</html>

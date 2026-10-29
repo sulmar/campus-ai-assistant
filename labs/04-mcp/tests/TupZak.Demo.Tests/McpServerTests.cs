@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol;
 using ModelContextProtocol.Client;
+using ModelContextProtocol.Extensions.Apps;
 using ModelContextProtocol.Protocol;
 using TupZak.Demo.Mcp;
 using TupZak.Demo.Services;
@@ -43,7 +44,7 @@ public sealed class McpServerTests : IClassFixture<WebApplicationFactory<Program
         var tools = await _client.ListToolsAsync();
 
         Assert.Equal(
-            [CampusTools.FindBuildingName, CampusTools.GetBuildingGeometryName, CampusTools.MarkEntranceName],
+            [CampusTools.FindBuildingName, CampusTools.GetBuildingGeometryName, CampusTools.MarkEntranceName, CampusMapApp.ShowBuildingMapName],
             tools.Select(t => t.Name).Order());
 
         var markEntrance = tools.Single(t => t.Name == CampusTools.MarkEntranceName);
@@ -116,8 +117,7 @@ public sealed class McpServerTests : IClassFixture<WebApplicationFactory<Program
         var resources = await _client.ListResourcesAsync();
         var templates = await _client.ListResourceTemplatesAsync();
 
-        var buildings = Assert.Single(resources);
-        Assert.Equal(CampusResources.BuildingsUri, buildings.Uri);
+        var buildings = Assert.Single(resources, r => r.Uri == CampusResources.BuildingsUri);
         Assert.Equal("application/json", buildings.MimeType);
         Assert.Equal(CampusResources.BuildingUriTemplate, Assert.Single(templates).UriTemplate);
     }
@@ -173,6 +173,83 @@ public sealed class McpServerTests : IClassFixture<WebApplicationFactory<Program
         Assert.Contains("„Budynek A”", text);
         Assert.Contains("„parking”", text);
         Assert.Contains(CampusTools.MarkEntranceName, text);
+    }
+
+    [Theory]
+    [InlineData("C", "C1", "C", "C1")]
+    [InlineData("budynek a", "a3", "A", "A3")]
+    public async Task Building_entrance_prompt_marks_entrance_directly_when_target_is_its_entrance(
+        string name, string target, string buildingId, string entranceId)
+    {
+        var result = await _client.GetPromptAsync(CampusPrompts.BuildingEntranceName,
+            new Dictionary<string, object?> { ["name"] = name, ["target"] = target });
+
+        string text = Assert.IsType<TextContentBlock>(Assert.Single(result.Messages).Content).Text;
+        Assert.Contains($"buildingId: \"{buildingId}\", entranceId: \"{entranceId}\"", text);
+        Assert.DoesNotContain(CampusTools.GetBuildingGeometryName, text);
+    }
+
+    [Fact]
+    public async Task Building_entrance_prompt_with_entrance_of_other_building_falls_back_to_search()
+    {
+        var result = await _client.GetPromptAsync(CampusPrompts.BuildingEntranceName,
+            new Dictionary<string, object?> { ["name"] = "A", ["target"] = "B1" });
+
+        string text = Assert.IsType<TextContentBlock>(Assert.Single(result.Messages).Content).Text;
+        Assert.Contains(CampusTools.GetBuildingGeometryName, text);
+        Assert.Contains("zapytaj mnie", text);
+    }
+
+    [Fact]
+    public async Task Show_building_map_tool_is_linked_to_mcp_app_view()
+    {
+        var tool = (await _client.ListToolsAsync()).Single(t => t.Name == CampusMapApp.ShowBuildingMapName);
+
+        var ui = tool.ProtocolTool.Meta!["ui"]!;
+        Assert.Equal(CampusMapApp.MapViewUri, ui["resourceUri"]!.GetValue<string>());
+        Assert.True(tool.ProtocolTool.Annotations?.ReadOnlyHint);
+    }
+
+    [Fact]
+    public async Task Mcp_app_view_resource_is_html_with_mcp_app_profile()
+    {
+        var resources = await _client.ListResourcesAsync();
+        Assert.Equal(McpApps.HtmlMimeType, Assert.Single(resources, r => r.Uri == CampusMapApp.MapViewUri).MimeType);
+
+        var result = await _client.ReadResourceAsync(CampusMapApp.MapViewUri);
+
+        var contents = Assert.IsType<TextResourceContents>(Assert.Single(result.Contents));
+        Assert.Equal("text/html;profile=mcp-app", contents.MimeType);
+        Assert.Contains("ui/initialize", contents.Text);
+        Assert.Contains("appInfo:", contents.Text);  // pole wymagane przez spec MCP Apps (nie clientInfo)
+        Assert.Contains("ui/notifications/tool-result", contents.Text);
+    }
+
+    [Fact]
+    public async Task Show_building_map_returns_geojson_as_structured_content()
+    {
+        var result = await _client.CallToolAsync(CampusMapApp.ShowBuildingMapName,
+            new Dictionary<string, object?> { ["buildingId"] = "A", ["entranceId"] = "a1" });
+
+        Assert.NotEqual(true, result.IsError);
+        var data = Assert.IsType<JsonElement>(result.StructuredContent);
+        Assert.Equal("A", data.GetProperty("buildingId").GetString());
+        Assert.Equal("A1", data.GetProperty("entranceId").GetString());
+        Assert.Equal("FeatureCollection", data.GetProperty("geojson").GetProperty("type").GetString());
+        Assert.Contains("wejściem A1", Assert.IsType<TextContentBlock>(Assert.Single(result.Content)).Text);
+    }
+
+    [Theory]
+    [InlineData("D", null, "Dostępne budynki: A, B, C")]
+    [InlineData("A", "B1", "nie należy do budynku A")]
+    public async Task Show_building_map_rejects_unknown_building_or_entrance(string buildingId, string? entranceId, string error)
+    {
+        var result = await _client.CallToolAsync(CampusMapApp.ShowBuildingMapName,
+            new Dictionary<string, object?> { ["buildingId"] = buildingId, ["entranceId"] = entranceId });
+
+        Assert.True(result.IsError);
+        Assert.Null(result.StructuredContent);
+        Assert.Contains(error, Json(result).GetProperty("error").GetString());
     }
 
     private static JsonElement Json(CallToolResult result) =>
