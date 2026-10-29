@@ -1,0 +1,68 @@
+{
+  "type": "FeatureCollection",
+  "name": "Budynek C",
+  "description": "Fikcyjne dane demonstracyjne. Lokalny układ współrzędnych w metrach: x rośnie na wschód, y rośnie na północ.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "id": "C", "kind": "building", "name": "Budynek C" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[240, 0], [300, 0], [300, 20], [260, 20], [260, 60], [240, 60], [240, 0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "C1", "kind": "entrance", "buildingId": "C", "name": "Wejście C1" },
+      "geometry": { "type": "Point", "coordinates": [280, 0] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "C2", "kind": "entrance", "buildingId": "C", "name": "Wejście C2" },
+      "geometry": { "type": "Point", "coordinates": [260, 42] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "C3", "kind": "entrance", "buildingId": "C", "name": "Wejście C3" },
+      "geometry": { "type": "Point", "coordinates": [250, 60] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "C4", "kind": "entrance", "buildingId": "C", "name": "Wejście C4" },
+      "geometry": { "type": "Point", "coordinates": [300, 10] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "C-P1", "kind": "parking", "name": "Parking" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[270, 28], [298, 28], [298, 56], [270, 56], [270, 28]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "C-S1", "kind": "path", "name": "Ścieżka piesza 1" },
+      "geometry": { "type": "LineString", "coordinates": [[270, 42], [260, 42]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "C-S2", "kind": "path", "name": "Ścieżka piesza 2" },
+      "geometry": { "type": "LineString", "coordinates": [[250, 60], [250, 84]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "C-S3", "kind": "path", "name": "Ścieżka piesza 3" },
+      "geometry": { "type": "LineString", "coordinates": [[280, -25], [280, 0]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "C-L1", "kind": "landmark", "name": "Stojaki rowerowe" },
+      "geometry": { "type": "Point", "coordinates": [250, 88] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "C-L2", "kind": "landmark", "name": "Przystanek autobusowy" },
+      "geometry": { "type": "Point", "coordinates": [280, -29] }
+    }
+  ]
+}

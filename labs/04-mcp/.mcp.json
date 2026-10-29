@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "tupzak": {
+      "type": "http",
+      "url": "http://localhost:5144/mcp"
+    }
+  }
+}

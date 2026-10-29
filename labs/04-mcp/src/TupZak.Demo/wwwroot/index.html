@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tup Żak · MCP</title>
+  <link rel="stylesheet" href="lib/leaflet/leaflet.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>Tup Żak <span>· MCP</span></h1>
+      <div id="model-info" class="badge">model: …</div>
+      <div id="mcp-info" class="badge mcp" title="Podłączenie: claude mcp add --transport http tupzak http://localhost:5144/mcp">MCP: …/mcp</div>
+    </div>
+    <nav>
+      <button class="scenario" data-prompt="Znajdź budynek A i zaznacz wejście od strony parkingu, mniej więcej w połowie długości budynku.">1 · Poprawne rozpoznanie</button>
+      <button class="scenario" data-prompt="Zaznacz wejście z tyłu budynku A.">2 · Niejednoznaczność</button>
+      <button class="scenario" data-prompt="Znajdź wejście do budynku D.">3 · Nieistniejący budynek</button>
+      <button id="reset" class="secondary">Wyczyść</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="panel" id="chat-panel">
+      <h2>1 · Rozmowa z agentem</h2>
+      <div id="chat" class="scroll"></div>
+      <form id="chat-form">
+        <input id="chat-input" type="text" autocomplete="off" placeholder="Np. Znajdź budynek B i zaznacz wejście od strony dziedzińca">
+        <button type="submit">Wyślij</button>
+      </form>
+    </section>
+
+    <section class="panel" id="trace-panel">
+      <h2>2 · Tool Calling — przebieg wykonania (Ollama i MCP)</h2>
+      <div id="trace" class="scroll">
+        <p class="empty">Tu pojawią się kolejne kroki Agent Loop oraz wywołania narzędzi przez klienta MCP (np. Claude Code).</p>
+      </div>
+    </section>
+
+    <section class="panel" id="map-panel">
+      <h2>3 · Mapa</h2>
+      <div id="map"></div>
+      <div class="map-legend">
+        <span><i class="lg building"></i>budynek</span>
+        <span><i class="lg parking"></i>parking</span>
+        <span><i class="lg courtyard"></i>dziedziniec</span>
+        <span><i class="lg path"></i>ścieżka</span>
+        <span><i class="lg entrance"></i>wejście</span>
+        <span><i class="lg marked"></i>wybrane przez agenta</span>
+        <span class="note">Dane fikcyjne · układ lokalny w metrach · północ u góry</span>
+      </div>
+    </section>
+  </main>
+
+  <script src="lib/leaflet/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
