@@ -24,7 +24,7 @@ public static class CampusMcpServer
         Zasoby:
         - tupzak://buildings: pełna lista budynków kampusu z identyfikatorami wejść.
         - tupzak://buildings/{buildingId}: źródłowe dane GeoJSON budynku.
-        - ui://tupzak/v2/building-map.html: widok MCP App z mapą budynku (wyświetla go host po show_building_map).
+        - ui://tupzak/building-map.html: widok MCP App z mapą budynku (wyświetla go host po show_building_map).
 
         Zasady:
         - Na pytanie, jakie budynki ma kampus, odpowiadaj na podstawie zasobu tupzak://buildings.

@@ -20,8 +20,7 @@ namespace TupZak.Demo.Mcp;
 public sealed class CampusMapApp
 {
     public const string ShowBuildingMapName = "show_building_map";
-    // Host zapamiętuje widok po URI, więc po zmianie HTML-a trzeba podbić wersję w ścieżce.
-    public const string MapViewUri = "ui://tupzak/v2/building-map.html";
+    public const string MapViewUri = "ui://tupzak/building-map.html";
 
     private static readonly Lazy<string> MapViewHtml = new(() =>
     {

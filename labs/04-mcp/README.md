@@ -78,7 +78,7 @@ claude -p "Znajdź budynek A i zaznacz wejście od strony parkingu" \
 | `Mcp/CampusMcpServer.cs` | Rejestracja serwera MCP: `AddMcpServer().WithHttpTransport()`, nazwa i instrukcje serwera oraz filtr `tools/call`. |
 | `Mcp/CampusResources.cs` | Zasoby MCP: `tupzak://buildings` (lista budynków) i szablon `tupzak://buildings/{buildingId}` (GeoJSON budynku). |
 | `Mcp/CampusPrompts.cs` | Prompt MCP `building_entrance` z argumentami `name` i `target`. |
-| `Mcp/CampusMapApp.cs` | MCP App: narzędzie `show_building_map` powiązane z widokiem `ui://tupzak/v2/building-map.html`. |
+| `Mcp/CampusMapApp.cs` | MCP App: narzędzie `show_building_map` powiązane z widokiem `ui://tupzak/building-map.html`. |
 | `Mcp/BuildingMapView.html` | Widok MCP App (osadzony w assembly): rysuje GeoJSON budynku jako SVG w rozmowie. |
 | `Mcp/McpActivityLog.cs` | Dziennik wywołań przez MCP, który przeglądarka odczytuje cyklicznie. |
 | `Program.cs` | `AddCampusMcpServer()`, `app.MapMcp("/mcp")`, endpoint `GET /api/mcp/activity?after={n}`. |
@@ -139,12 +139,12 @@ Prompt jest generowany po stronie serwera, więc może korzystać z danych: spra
 
 [MCP Apps](https://modelcontextprotocol.io/extensions/apps) (rozszerzenie `io.modelcontextprotocol/ui`) pozwala serwerowi dostarczyć interfejs, który host wyświetla bezpośrednio w rozmowie:
 
-1. Narzędzie `show_building_map` ma w `_meta.ui.resourceUri` wskazany zasób `ui://tupzak/v2/building-map.html` (atrybut `[McpAppUi]` i `.WithMcpApps()` z pakietu `ModelContextProtocol.Extensions.Apps`).
+1. Narzędzie `show_building_map` ma w `_meta.ui.resourceUri` wskazany zasób `ui://tupzak/building-map.html` (atrybut `[McpAppUi]` i `.WithMcpApps()` z pakietu `ModelContextProtocol.Extensions.Apps`).
 2. Zasób to HTML z MIME `text/html;profile=mcp-app`. Host wczytuje go przez `resources/read` i renderuje w sandboxowanym iframe.
 3. Widok wymienia z hostem komunikaty JSON-RPC przez `postMessage`: `ui/initialize` → `ui/notifications/initialized` → `ui/notifications/tool-result`.
 4. Wynik narzędzia ma dwie części: `content` (krótki tekst dla modelu i hostów bez MCP Apps) oraz `structuredContent` z GeoJSON-em, który rysuje widok, a który nie trafia do kontekstu modelu.
 
-Host zapamiętuje widok po URI i nie pobiera go ponownie przy kolejnych wywołaniach. Po zmianie `BuildingMapView.html` trzeba więc podbić wersję w `CampusMapApp.MapViewUri` (`ui://tupzak/v2/…` → `v3`). Log aplikacji pokazuje przy każdym `show_building_map`, czy klient zgłasza obsługę MCP Apps, a wpis `resources/read` oznacza, że host pobrał widok.
+Claude Desktop zapamiętuje widok i nie pobiera go ponownie przy kolejnych wywołaniach. Po zmianie `BuildingMapView.html` zamknij Claude Desktop przez ⌘Q (nie samo okno) i uruchom go ponownie. Log aplikacji pokazuje przy każdym `show_building_map`, czy klient zgłasza obsługę MCP Apps, a wpis `resources/read` oznacza, że host pobrał widok.
 
 Widok nie korzysta z CDN ani Leafleta, bo domyślne CSP hosta dopuszcza tylko skrypty i style inline. Mapa jest rysowana jako SVG w tych samych kolorach co w przeglądarce.
 
