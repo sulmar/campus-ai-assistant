@@ -12,6 +12,26 @@ W tym katalogu uruchom `claude`. Serwer `tupzak` jest zdefiniowany w `.mcp.json`
 
 > Znajdź budynek A i zaznacz wejście od strony parkingu.
 
+## MCP Inspector
+
+[MCP Inspector](https://github.com/modelcontextprotocol/inspector) pozwala obejrzeć i wywołać wszystko, co udostępnia serwer, bez modelu. Wymaga Node.js, a aplikacja musi działać.
+
+**Interfejs w przeglądarce:**
+
+```bash
+npx @modelcontextprotocol/inspector
+```
+
+W otwartej stronie wybierz *Transport Type: Streamable HTTP*, wpisz URL `http://localhost:5144/mcp` i kliknij *Connect*. Na zakładkach *Tools*, *Resources* i *Prompts* możesz przeglądać i wywoływać elementy serwera.
+
+**Wiersz poleceń:**
+
+```bash
+npx @modelcontextprotocol/inspector --cli http://localhost:5144/mcp --transport http --method tools/list
+npx @modelcontextprotocol/inspector --cli http://localhost:5144/mcp --transport http --method tools/call --tool-name find_building --tool-arg query=A
+npx @modelcontextprotocol/inspector --cli http://localhost:5144/mcp --transport http --method prompts/get --prompt-name building_entrance --prompt-args name=C target=C1
+```
+
 ## Co udostępnia serwer MCP
 
 MCP rozróżnia, **kto decyduje** o użyciu danego elementu:
