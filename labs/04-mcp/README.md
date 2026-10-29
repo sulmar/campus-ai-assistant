@@ -12,12 +12,83 @@ W tym katalogu uruchom `claude`. Serwer `tupzak` jest zdefiniowany w `.mcp.json`
 
 > Znajdź budynek A i zaznacz wejście od strony parkingu.
 
-## Serwer udostępnia
+## Co udostępnia serwer MCP
 
-- **Narzędzia:** `find_building`, `get_building_geometry`, `mark_entrance`, `show_building_map`.
-- **Zasoby:** `tupzak://buildings` i `tupzak://buildings/{id}`, np. `@tupzak:tupzak://buildings`.
-- **Prompt:** `building_entrance`, np. `/mcp__tupzak__building_entrance A parking`.
-- **MCP App:** mapa budynku wyświetlana w rozmowie (tylko Claude Desktop i claude.ai).
+MCP rozróżnia, **kto decyduje** o użyciu danego elementu:
+
+| Element | Kto decyduje | W naszym projekcie |
+|---|---|---|
+| Narzędzia (tools) | model | 4 narzędzia kampusu |
+| Zasoby (resources) | użytkownik lub aplikacja | lista budynków i GeoJSON budynku |
+| Prompty (prompts) | użytkownik | `building_entrance` |
+| Instrukcje (instructions) | serwer, raz przy połączeniu | zasady pracy z danymi kampusu |
+| MCP App | host, po wywołaniu narzędzia | mapa budynku w rozmowie |
+
+### Narzędzia
+
+| Narzędzie | Argumenty | Co robi |
+|---|---|---|
+| `find_building` | `query`, np. `"Budynek A"` | Znajduje budynek i zwraca jego `buildingId`. |
+| `get_building_geometry` | `buildingId` | Zwraca obrys, wejścia (z elewacją) oraz parkingi, ścieżki i punkty orientacyjne z kierunkami i odległościami. |
+| `mark_entrance` | `buildingId`, `entranceId` | Zaznacza wejście na mapie w przeglądarce. |
+| `show_building_map` | `buildingId`, opcjonalnie `entranceId` | Pokazuje mapę budynku w rozmowie (MCP App). |
+
+Typowy przebieg dla pytania „wejście do budynku A od strony parkingu”:
+
+```text
+find_building("A")            → { "buildingId": "A" }
+get_building_geometry("A")    → parking A-P1 na zachodzie, wejście A1 na elewacji zachodniej, ścieżka A-S1 → A1
+mark_entrance("A", "A1")      → { "success": true }
+```
+
+### Zasoby
+
+| URI | Zawartość |
+|---|---|
+| `tupzak://buildings` | Lista budynków z wejściami, np. `[{ "buildingId": "A", "entrances": ["A1","A2","A3"] }, …]`. |
+| `tupzak://buildings/{buildingId}` | Źródłowy GeoJSON budynku, np. `tupzak://buildings/B`. |
+
+W Claude Code zasób dołącza się przez `@`: `@tupzak:tupzak://buildings jakie masz budynki?`
+
+### Prompt `building_entrance`
+
+Argumenty: `name` (budynek) i `target` (obiekt w otoczeniu albo identyfikator wejścia). W Claude Code: `/mcp__tupzak__building_entrance A parking`.
+
+Serwer zwraca gotową wiadomość użytkownika, np. dla `A parking`:
+
+```text
+Znajdź budynek „A” i wskaż jego wejście od strony obiektu „parking”.
+
+1. Wywołaj find_building z nazwą budynku, żeby ustalić jego identyfikator.
+2. Wywołaj get_building_geometry, żeby pobrać wejścia i obiekty w otoczeniu.
+3. Wybierz wejście na elewacji zwróconej w stronę obiektu „parking”, które jest do niego najbliżej
+   lub do którego prowadzi od niego ścieżka.
+4. Jeżeli wejście jest jednoznaczne, zaznacz je narzędziem mark_entrance.
+   Jeżeli nie, albo w otoczeniu nie ma takiego obiektu, nie zaznaczaj niczego i zapytaj mnie.
+
+Odpowiedz krótko: identyfikator wejścia, elewacja i uzasadnienie na podstawie danych.
+```
+
+Gdy `target` jest wejściem tego budynku (np. `C C1`), serwer sprawdza to w danych i zwraca krótszą wiadomość:
+
+```text
+Zaznacz wejście C1 budynku C narzędziem mark_entrance
+(buildingId: "C", entranceId: "C1").
+```
+
+### Instrukcje serwera
+
+Host dostaje je przy połączeniu (`initialize`). Najważniejsze zasady:
+
+- pytanie o listę budynków → zasób `tupzak://buildings`;
+- nie wymyślać budynków, wejść ani współrzędnych;
+- wejście „od strony” obiektu leży na elewacji zwróconej w jego kierunku;
+- gdy opis nie wskazuje jednego wejścia, zapytać użytkownika zamiast zaznaczać;
+- prośba o mapę → `show_building_map`.
+
+### MCP App
+
+Narzędzie `show_building_map` wskazuje widok `ui://tupzak/building-map.html`. Host pobiera ten HTML, wyświetla go w rozmowie i przekazuje mu wynik narzędzia, a widok rysuje GeoJSON jako SVG. Działa w Claude Desktop i claude.ai. Claude Code pokazuje tylko tekst wyniku.
 
 ## Mapa w Claude Desktop
 
