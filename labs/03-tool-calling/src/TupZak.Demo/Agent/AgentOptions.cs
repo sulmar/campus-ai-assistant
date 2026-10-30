@@ -9,6 +9,11 @@ public sealed class OllamaOptions
     public bool? Think { get; set; }
 }
 
+public sealed class GeminiOptions
+{
+    public string Model { get; set; } = "gemini-3.8-flash";
+}
+
 public sealed class AgentOptions
 {
     /// <summary>Maksymalna liczba zapytań do modelu w jednej turze rozmowy.</summary>

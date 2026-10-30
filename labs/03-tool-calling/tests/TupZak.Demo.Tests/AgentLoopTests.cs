@@ -7,7 +7,7 @@ namespace TupZak.Demo.Tests;
 
 /// <summary>
 /// Testy mechaniki Agent Loop z zaprogramowanym klientem czatu.
-/// Nie sprawdzają jakości rozumowania modelu — do tego potrzebny jest prawdziwy model (Ollama).
+/// Nie sprawdzają jakości rozumowania modelu — do tego potrzebny jest prawdziwy model.
 /// </summary>
 public class AgentLoopTests
 {
@@ -18,8 +18,7 @@ public class AgentLoopTests
         new(client,
             new ToolExecutor(new CampusTools(TestData.LoadRepository(), _mapState).CreateAIFunctions()),
             _mapState,
-            new AgentOptions { MaxIterations = maxIterations },
-            new OllamaOptions());
+            new AgentOptions { MaxIterations = maxIterations });
 
     private Task OnEvent(AgentEvent e)
     {

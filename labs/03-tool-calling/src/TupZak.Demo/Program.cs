@@ -1,19 +1,17 @@
 using System.Text.Json;
 using Microsoft.Extensions.AI;
-using OllamaSharp;
 using TupZak.Demo.Agent;
 using TupZak.Demo.Services;
 using TupZak.Demo.Tools;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var ollamaOptions = builder.Configuration.GetSection("Ollama").Get<OllamaOptions>() ?? new OllamaOptions();
+IChatClientFactory chatClientFactory = ChatClientFactory.Select(args, builder.Configuration);
 var agentOptions = builder.Configuration.GetSection("Agent").Get<AgentOptions>() ?? new AgentOptions();
 string dataDirectory = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, builder.Configuration["DataDirectory"] ?? "../../data"));
 
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Encoder = CampusTools.JsonOptions.Encoder);
 
-builder.Services.AddSingleton(ollamaOptions);
 builder.Services.AddSingleton(agentOptions);
 builder.Services.AddSingleton(_ => BuildingRepository.LoadFromDirectory(dataDirectory));
 builder.Services.AddSingleton<MapState>();
@@ -22,24 +20,23 @@ builder.Services.AddSingleton(sp => new ToolExecutor(sp.GetRequiredService<Campu
 builder.Services.AddSingleton<AgentLoop>();
 builder.Services.AddSingleton<AgentSession>();
 
-// OllamaApiClient implementuje IChatClient z Microsoft.Extensions.AI.
-// Zamiana dostawcy modelu sprowadza się do zarejestrowania innej implementacji IChatClient.
-builder.Services.AddChatClient(_ => new OllamaApiClient(new Uri(ollamaOptions.Endpoint), ollamaOptions.Model));
+// Agent Loop zna tylko IChatClient z Microsoft.Extensions.AI. Implementację dla wybranego dostawcy tworzy fabryka.
+builder.Services.AddChatClient(_ => chatClientFactory.Create());
 
 var app = builder.Build();
 
 // Wczytanie i walidacja danych GeoJSON przy starcie: błędne dane zatrzymują aplikację od razu.
 var repository = app.Services.GetRequiredService<BuildingRepository>();
 app.Logger.LogInformation("Wczytano budynki {Buildings} z {Directory}. Model: {Model} @ {Endpoint}",
-    string.Join(", ", repository.All.Select(b => b.Id)), dataDirectory, ollamaOptions.Model, ollamaOptions.Endpoint);
+    string.Join(", ", repository.All.Select(b => b.Id)), dataDirectory, chatClientFactory.Model, chatClientFactory.Endpoint ?? "API dostawcy");
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.MapGet("/api/info", (ToolExecutor tools) => new
 {
-    ollamaOptions.Model,
-    ollamaOptions.Endpoint,
+    chatClientFactory.Model,
+    chatClientFactory.Endpoint,
     agentOptions.MaxIterations,
     agentOptions.TimeoutSeconds,
     Tools = tools.Functions.Select(f => new { f.Name, f.Description, Schema = f.JsonSchema }),

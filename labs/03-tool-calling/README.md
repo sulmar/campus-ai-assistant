@@ -15,7 +15,7 @@ LLM odpowiada za interpretację polecenia i wybór narzędzi. Aplikacja .NET odp
 ## Wymagania
 
 - .NET SDK 10
-- [Ollama](https://ollama.com) z modelem obsługującym Tool Calling (domyślnie `qwen3:8b`)
+- [Ollama](https://ollama.com) z modelem obsługującym Tool Calling (domyślnie `qwen3:8b`) albo klucz API [Gemini](https://ai.google.dev/gemini-api/docs/api-key)
 
 ```bash
 ollama pull qwen3:8b
@@ -75,7 +75,27 @@ Każde ustawienie można nadpisać zmienną środowiskową, bez edycji pliku:
 Ollama__Model=qwen3:14b Ollama__Think=false dotnet run --project src/TupZak.Demo
 ```
 
-Integracja z Ollama korzysta z pakietu [OllamaSharp](https://github.com/awaescher/OllamaSharp), oficjalnie zalecanego dla `Microsoft.Extensions.AI`. Klasa `OllamaApiClient` implementuje `IChatClient`, więc aby zmienić dostawcę modelu, wystarczy zarejestrować w `Program.cs` inną implementację `IChatClient`.
+### Wybór dostawcy modelu
+
+Dostawcę i model wybiera się parametrami uruchomienia, a nie w `appsettings.json`:
+
+```bash
+dotnet run --project src/TupZak.Demo                                                # Ollama, model z appsettings.json
+dotnet run --project src/TupZak.Demo -- --provider gemini                           # Gemini, model gemini-3.8-flash
+dotnet run --project src/TupZak.Demo -- --provider gemini --model gemini-3.6-flash  # Gemini, wskazany model
+```
+
+| Parametr / zmienna | Znaczenie |
+|---|---|
+| `--provider` | `ollama` (domyślnie) albo `gemini`. |
+| `--model` | Model wybranego dostawcy. Nadpisuje `Ollama:Model` i domyślny model Gemini. |
+| `MODEL_API_KEY` | Zmienna środowiskowa ze wspólnym kluczem API. Wymagana dla Gemini. Dla Ollamy opcjonalna: lokalny serwer jej nie potrzebuje, a ustawiona trafia do nagłówka `Authorization: Bearer`. |
+
+Klucza nie podaje się jako parametru, bo wartości z wiersza poleceń trafiają do historii powłoki i listy procesów.
+
+> Przy Gemini treść rozmowy i wyniki narzędzi są wysyłane do chmury Google. Limity i warunki przetwarzania danych zależą od planu. Ollama działa lokalnie.
+
+Integracja z Ollama korzysta z pakietu [OllamaSharp](https://github.com/awaescher/OllamaSharp), a integracja z Gemini z oficjalnego pakietu [Google.GenAI](https://github.com/googleapis/dotnet-genai). Oba udostępniają `IChatClient` z `Microsoft.Extensions.AI`, a `AgentLoop` zna tylko ten interfejs. Klienta tworzy fabryka z `Agent/ChatClientFactory.cs`: nowy dostawca to jedna nowa klasa `IChatClientFactory` i jeden przypadek w `ChatClientFactory.Select`.
 
 ## Struktura projektu
 
@@ -88,9 +108,10 @@ labs/03-tool-calling/
 │   ├── building-b.geojson
 │   └── building-c.geojson
 ├── src/TupZak.Demo/
-│   ├── Program.cs                # konfiguracja, IChatClient, endpointy HTTP
+│   ├── Program.cs                # konfiguracja, rejestracja IChatClient, endpointy HTTP
 │   ├── Agent/
 │   │   ├── AgentLoop.cs          # pętla Tool Calling (napisana ręcznie)
+│   │   ├── ChatClientFactory.cs  # fabryki IChatClient: Ollama, Gemini
 │   │   ├── ToolExecutor.cs       # walidacja argumentów i wykonanie narzędzi
 │   │   ├── AgentSession.cs       # historia rozmowy, timeout, czyszczenie
 │   │   ├── SystemPrompt.cs

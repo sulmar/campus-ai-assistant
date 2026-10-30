@@ -14,8 +14,7 @@ public sealed class AgentLoop(
     IChatClient chatClient,
     ToolExecutor tools,
     MapState mapState,
-    AgentOptions options,
-    OllamaOptions ollamaOptions)
+    AgentOptions options)
 {
     public async Task<string> RunAsync(
         IList<ChatMessage> conversation,
@@ -29,8 +28,6 @@ public sealed class AgentLoop(
             Temperature = options.Temperature,
             Seed = options.Seed,
         };
-        if (ollamaOptions.Think is bool think)
-            chatOptions.AdditionalProperties = new() { ["think"] = think };
 
         for (int iteration = 1; iteration <= options.MaxIterations; iteration++)
         {
