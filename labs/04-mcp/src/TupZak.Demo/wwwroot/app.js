@@ -141,7 +141,7 @@ function handleEvent(e, pending) {
 
 // ---------- mapa (Leaflet, lokalny układ współrzędnych w metrach) ----------
 
-const map = L.map('map', { crs: L.CRS.Simple, minZoom: -3, maxZoom: 4, zoomSnap: 0.25, attributionControl: false });
+const map = L.map('map', { crs: L.CRS.Simple, minZoom: -3, maxZoom: 4, zoomSnap: 0.25, attributionControl: false, trackResize: false });
 L.control.scale({ imperial: false, metric: true, position: 'bottomleft' }).addTo(map);
 
 const buildingLayers = {};   // id -> { outline, group, entrances: { id -> latlng } }
@@ -282,8 +282,104 @@ async function pollMcp() {
   setTimeout(pollMcp, 1000);
 }
 
-// Mapa potrzebuje rzeczywistych wymiarów kontenera po ułożeniu siatki CSS.
-window.addEventListener('resize', () => map.invalidateSize());
+// ---------- układ paneli: przeciąganie rozdzielaczy i zwijanie ----------
+
+const mainEl = document.querySelector('main');
+const panels = [...document.querySelectorAll('.panel')];
+const gutters = [...document.querySelectorAll('.gutter')];
+const panelSizes = [27, 35, 38];   // udziały szerokości (fr)
+const COLLAPSED_WIDTH = 46;
+const MIN_PANEL_WIDTH = 200;
+
+const isOpen = i => !panels[i].classList.contains('collapsed');
+
+// Rozdzielacz zmienia szerokość najbliższych otwartych paneli po obu stronach.
+function gutterPanels(gutterIndex) {
+  const indexes = panels.map((_, i) => i).filter(isOpen);
+  const left = indexes.findLast(i => i <= gutterIndex);
+  const right = indexes.find(i => i > gutterIndex);
+  return left === undefined || right === undefined ? null : [left, right];
+}
+
+function applyLayout() {
+  mainEl.style.gridTemplateColumns = panels
+    .map((_, i) => isOpen(i) ? `${panelSizes[i]}fr` : `${COLLAPSED_WIDTH}px`)
+    .join(' 14px ');
+  const openCount = panels.filter((_, i) => isOpen(i)).length;
+  panels.forEach((panel, i) => {
+    const toggle = panel.querySelector('.panel-toggle');
+    toggle.textContent = isOpen(i) ? '−' : '+';
+    toggle.title = isOpen(i) ? 'Ukryj panel' : 'Pokaż panel';
+    toggle.disabled = isOpen(i) && openCount === 1;   // przynajmniej jeden panel zostaje otwarty
+  });
+  gutters.forEach((gutter, i) => gutter.classList.toggle('inactive', !gutterPanels(i)));
+}
+
+// Przyciski powstają tutaj, poza listą `buttons`, bo zwijanie działa także podczas pracy agenta.
+panels.forEach(panel => {
+  const title = panel.querySelector('h2');
+  title.innerHTML = `<span>${title.innerHTML}</span>`;
+  title.appendChild(Object.assign(document.createElement('button'), { type: 'button', className: 'panel-toggle' }));
+  title.addEventListener('click', e => {
+    if (e.target.closest('.panel-toggle') || panel.classList.contains('collapsed')) {
+      panel.classList.toggle('collapsed');
+      applyLayout();
+    }
+  });
+});
+
+gutters.forEach((gutter, gutterIndex) => {
+  gutter.addEventListener('pointerdown', down => {
+    const pair = gutterPanels(gutterIndex);
+    if (!pair) return;
+    const [left, right] = pair;
+    down.preventDefault();
+    gutter.setPointerCapture(down.pointerId);
+
+    const startWidth = panels[left].offsetWidth;
+    const totalWidth = startWidth + panels[right].offsetWidth;
+    let dragged = startWidth;
+
+    const clampedWidth = () => Math.min(Math.max(dragged, MIN_PANEL_WIDTH), totalWidth - MIN_PANEL_WIDTH);
+    // Przeciągnięcie wyraźnie poza minimum zwija panel; po rozwinięciu wraca on do poprzedniej szerokości.
+    const panelToHide = () => dragged < MIN_PANEL_WIDTH / 2 ? left
+      : totalWidth - dragged < MIN_PANEL_WIDTH / 2 ? right
+      : null;
+
+    // Podczas przeciągania przesuwa się tylko linia podziału; panele zmieniają się po puszczeniu.
+    const move = e => {
+      dragged = startWidth + e.clientX - down.clientX;
+      gutter.style.transform = `translateX(${clampedWidth() - startWidth}px)`;
+      gutter.classList.toggle('collapsing', panelToHide() !== null);
+    };
+    gutter.classList.add('dragging');
+    gutter.addEventListener('pointermove', move);
+
+    gutter.addEventListener('lostpointercapture', () => {
+      gutter.removeEventListener('pointermove', move);
+      gutter.classList.remove('dragging', 'collapsing');
+      gutter.style.transform = '';
+      if (dragged === startWidth) return;
+
+      const hidden = panelToHide();
+      if (hidden !== null) {
+        panels[hidden].classList.add('collapsed');
+      } else {
+        const totalSize = panelSizes[left] + panelSizes[right];
+        panelSizes[left] = totalSize * clampedWidth() / totalWidth;
+        panelSizes[right] = totalSize - panelSizes[left];
+      }
+      applyLayout();
+    }, { once: true });
+  });
+});
+
+applyLayout();
+
+// Mapa potrzebuje rzeczywistych wymiarów kontenera po każdej zmianie układu.
+// Zwiniętej mapy nie przeliczamy: Leaflet zachowuje ostatni rozmiar, więc flyToBounds działa także w tle.
+const mapEl = document.getElementById('map');
+new ResizeObserver(() => { if (mapEl.offsetWidth > 0) map.invalidateSize(); }).observe(mapEl);
 
 // Przy małym przybliżeniu ukrywamy etykiety drugorzędne (dziedziniec, punkty orientacyjne).
 const updateLabels = () => document.getElementById('map').classList.toggle('zoomed-out', map.getZoom() < 1.5);
