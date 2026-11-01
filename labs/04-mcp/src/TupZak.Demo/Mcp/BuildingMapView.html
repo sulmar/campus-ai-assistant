@@ -25,17 +25,30 @@
     .label { font-size: 11px; fill: var(--fg); paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
     .label.minor { fill: var(--muted); }
     .label.entrance { font-weight: 700; fill: #1d4ed8; }
+    #pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; }
+    #pick[hidden] { display: none; }
+    #pick-text { flex: 1 1 200px; }
+    #pick-text.error { color: #dc2626; }
+    #pick button { font: inherit; padding: 4px 12px; cursor: pointer; }
+    #pick button:disabled { cursor: default; }
+    svg.picking { cursor: crosshair; }
   </style>
 </head>
 <body>
 <!-- Widget pokazuje tylko mapę; nazwę budynku i wejście model podaje w tekście odpowiedzi. -->
 <div id="status">Oczekiwanie na wynik narzędzia…</div>
+<div id="pick" hidden>
+  <span id="pick-text" role="status"></span>
+  <button id="pick-confirm" type="button" disabled>Zatwierdź</button>
+  <button id="pick-unknown" type="button">Nie wiem</button>
+</div>
 <svg id="map" hidden></svg>
 <script>
   // ---------- JSON-RPC przez postMessage z hostem MCP Apps ----------
 
   const pending = new Map();
   let nextId = 1;
+  let hostCapabilities = {};
 
   function send(message) { window.parent.postMessage({ jsonrpc: '2.0', ...message }, '*'); }
 
@@ -81,6 +94,7 @@
     appInfo: { name: 'tupzak-building-map', version: '1.0.0' },
     appCapabilities: {},
   }).then(result => {
+    hostCapabilities = result?.hostCapabilities ?? {};
     applyHostContext(result?.hostContext);
     send({ method: 'ui/notifications/initialized', params: {} });
   }).catch(error => setStatus(`Błąd inicjalizacji: ${error?.message ?? error}`, true));
@@ -113,6 +127,141 @@
 
     setStatus('');
     draw(data.geojson, data.entranceId);
+    drawCoffeeMachine(data.coffeeMachine);
+    if (data.mode === 'pick-coffee-machine') startPicking(data);
+  }
+
+  // ---------- wskazywanie ekspresu do kawy: odpowiednik elicitacji w widgecie ----------
+
+  const svgNs = 'http://www.w3.org/2000/svg';
+  const reportToolName = 'report_coffee_machine_location';
+  let mapTransform = null;   // parametry ostatniego draw(), potrzebne do przeliczenia kliknięcia na metry
+  let picking = null;        // { buildingId, name, point, busy } albo null poza trybem wskazywania
+
+  const pickPanel = document.getElementById('pick');
+  const pickText = document.getElementById('pick-text');
+  const confirmButton = document.getElementById('pick-confirm');
+  const unknownButton = document.getElementById('pick-unknown');
+
+  function setPickText(text, isError = false) {
+    pickText.textContent = text;
+    pickText.className = isError ? 'error' : '';
+  }
+
+  function startPicking(data) {
+    picking = { buildingId: data.buildingId, name: data.name, saved: data.coffeeMachine, point: null, busy: false };
+    pickPanel.hidden = false;
+    document.getElementById('map').classList.add('picking');
+    setPickText(`Kliknij na mapie miejsce ekspresu do kawy: ${data.name}.`);
+    updatePickButtons();
+  }
+
+  function stopPicking(text, isError = false) {
+    picking = null;
+    document.getElementById('map').classList.remove('picking');
+    confirmButton.hidden = unknownButton.hidden = true;
+    setPickText(text, isError);
+  }
+
+  function updatePickButtons() {
+    confirmButton.disabled = !picking?.point || picking.busy;
+    unknownButton.disabled = !!picking?.busy;
+  }
+
+  function toMapPoint(event) {
+    const svg = document.getElementById('map');
+    const view = new DOMPoint(event.clientX, event.clientY).matrixTransform(svg.getScreenCTM().inverse());
+    const { minX, minY, s, pad, height } = mapTransform;
+    const round = v => Math.round(v * 10) / 10;
+    return { x: round(minX + (view.x - pad) / s), y: round(minY + (height - pad - view.y) / s) };
+  }
+
+  // Marker ma osobną grupę, więc przesuwanie wskazania nie wymaga ponownego rysowania mapy.
+  function drawCoffeeMachine(point) {
+    document.getElementById('coffee-machine')?.remove();
+    if (!point || !mapTransform) return;
+
+    const { minX, minY, s, pad, height } = mapTransform;
+    const group = document.createElementNS(svgNs, 'g');
+    group.id = 'coffee-machine';
+    group.setAttribute('transform', `translate(${pad + (point.x - minX) * s} ${height - pad - (point.y - minY) * s})`);
+    group.setAttribute('pointer-events', 'none');
+    group.innerHTML = '<circle r="8" fill="#f59e0b" stroke="#92400e" stroke-width="3"/>'
+      + '<text class="label" y="-13" text-anchor="middle">Ekspres</text>';
+    document.getElementById('map').appendChild(group);
+  }
+
+  document.getElementById('map').addEventListener('click', event => {
+    if (!picking || picking.busy || !mapTransform) return;
+    picking.point = toMapPoint(event);
+    drawCoffeeMachine(picking.point);
+    setPickText(`Wskazane miejsce: (${picking.point.x}; ${picking.point.y}) m. Zatwierdź albo kliknij inne miejsce.`);
+    updatePickButtons();
+  });
+
+  confirmButton.addEventListener('click', async () => {
+    if (!picking?.point || picking.busy) return;
+    if (!hostCapabilities.serverTools)
+      return setPickText('Ten host nie pozwala widgetowi zapisać wskazania. Opisz miejsce ekspresu w rozmowie.', true);
+
+    picking.busy = true;
+    updatePickButtons();
+    setPickText('Zapisywanie…');
+
+    let saved;
+    try {
+      saved = await request('tools/call', {
+        name: reportToolName,
+        arguments: { buildingId: picking.buildingId, x: picking.point.x, y: picking.point.y },
+      });
+    } catch (error) {
+      return failPick(`Nie udało się zapisać wskazania: ${error?.message ?? error}`);
+    }
+
+    const text = (saved?.content ?? []).filter(c => c.type === 'text').map(c => c.text).join('');
+    if (saved?.isError) {
+      let message = text;
+      try { message = JSON.parse(text).error ?? text; } catch { }
+      return failPick(message || 'Nie udało się zapisać wskazania.');
+    }
+
+    const r = saved.structuredContent ?? {};
+    const place = r.insideBuilding ? 'w budynku' : 'poza budynkiem';
+    const answer = `Ekspres do kawy (${picking.name}) wskazano na mapie: x=${r.x}, y=${r.y} m, ${place}, `
+      + `${r.nearestEntranceDistanceM} m od wejścia ${r.nearestEntranceId}.`;
+
+    stopPicking('Zapisano wskazanie.');
+    try {
+      await sendToConversation(answer);
+    } catch {
+      // Zapis na serwerze już jest. Model dostanie kontekst w kolejnej turze, którą rozpocznie użytkownik.
+      request('ui/update-model-context', { content: [{ type: 'text', text: answer }] }).catch(() => { });
+      setPickText('Zapisano. Napisz w rozmowie, żeby kontynuować.');
+    }
+  });
+
+  unknownButton.addEventListener('click', async () => {
+    if (!picking || picking.busy) return;
+    const { name } = picking;
+    picking.busy = true;
+    updatePickButtons();
+    try {
+      await sendToConversation(`Nie wiem, gdzie jest ekspres do kawy (${name}).`);
+      drawCoffeeMachine(picking.saved);   // porzucone wskazanie znika, wcześniej zapisane zostaje
+      stopPicking('Bez wskazania.');
+    } catch (error) {
+      failPick(`Nie udało się wysłać odpowiedzi: ${error?.message ?? error}. Napisz ją w rozmowie.`);
+    }
+  });
+
+  function failPick(message) {
+    picking.busy = false;
+    updatePickButtons();
+    setPickText(message, true);
+  }
+
+  function sendToConversation(text) {
+    return request('ui/message', { role: 'user', content: { type: 'text', text } });
   }
 
   function draw(geojson, markedEntranceId) {
@@ -129,6 +278,7 @@
     const s = Math.min(scale, (height - 2 * pad) / Math.max(maxY - minY, 1));
     const px = ([x, y]) => [pad + (x - minX) * s, height - pad - (y - minY) * s];
     const pts = coords => coords.map(p => px(p).map(v => v.toFixed(1)).join(',')).join(' ');
+    mapTransform = { minX, minY, s, pad, height };
 
     const kindOrder = { parking: 0, courtyard: 1, path: 2, building: 3, landmark: 4, entrance: 5 };
     const sorted = [...features].sort((a, b) => (kindOrder[a.properties.kind] ?? 9) - (kindOrder[b.properties.kind] ?? 9));

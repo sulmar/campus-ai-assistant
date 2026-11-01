@@ -278,8 +278,26 @@ async function pollMcp() {
       mcpSequence = item.sequence;
     }
     if (!busy && JSON.stringify(data.map) !== lastMapState) applyMapState(data.map);
+    applyCoffeeMachines(data.coffeeMachines);
   } catch { /* aplikacja niedostępna — spróbujemy ponownie */ }
   setTimeout(pollMcp, 1000);
+}
+
+// Ekspresy wskazane przez użytkownika w widgecie MCP App (CRS.Simple: lat = y, lng = x).
+const coffeeMachineLayer = L.layerGroup().addTo(map);
+let lastCoffeeMachines = '[]';
+
+function applyCoffeeMachines(machines = []) {
+  const json = JSON.stringify(machines);
+  if (json === lastCoffeeMachines) return;
+  lastCoffeeMachines = json;
+
+  coffeeMachineLayer.clearLayers();
+  for (const { buildingId, x, y } of machines) {
+    L.circleMarker([y, x], { radius: 8, color: '#92400e', weight: 3, fillColor: '#f59e0b', fillOpacity: 1 })
+      .bindTooltip(`Ekspres (${escapeHtml(buildingId)})`, { permanent: true, direction: 'right', className: 'label', offset: [8, 0] })
+      .addTo(coffeeMachineLayer);
+  }
 }
 
 // ---------- układ paneli: przeciąganie rozdzielaczy i zwijanie ----------

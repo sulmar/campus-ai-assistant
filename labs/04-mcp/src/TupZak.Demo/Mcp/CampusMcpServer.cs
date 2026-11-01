@@ -37,6 +37,9 @@ public static class CampusMcpServer
           nie wywołuj mark_entrance, tylko zapytaj użytkownika.
         - Gdy użytkownik chce zobaczyć budynek, mapę lub zaznaczone wejście, wywołaj show_building_map.
           W hostach obsługujących MCP Apps mapa pojawi się bezpośrednio w rozmowie; nie otwieraj innych stron.
+        - O ekspres do kawy pytaj najpierw find_coffee_machine. Gdy zwróci known: false, wywołaj
+          ask_coffee_machine_location i zakończ turę: użytkownik wskaże miejsce na mapie, a odpowiedź przyjdzie
+          w osobnej wiadomości. Nie wymyślaj lokalizacji ekspresu.
         - Jeżeli narzędzie zwróci błąd, przekaż go użytkownikowi. Nie zgaduj.
         """;
 

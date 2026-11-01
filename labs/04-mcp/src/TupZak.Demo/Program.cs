@@ -18,6 +18,7 @@ builder.Services.AddSingleton(ollamaOptions);
 builder.Services.AddSingleton(agentOptions);
 builder.Services.AddSingleton(_ => BuildingRepository.LoadFromDirectory(dataDirectory));
 builder.Services.AddSingleton<MapState>();
+builder.Services.AddSingleton<CoffeeMachineReports>();
 builder.Services.AddSingleton<CampusTools>();
 builder.Services.AddSingleton(sp => new ToolExecutor(sp.GetRequiredService<CampusTools>().CreateAIFunctions()));
 builder.Services.AddSingleton<AgentLoop>();
@@ -74,20 +75,22 @@ app.MapPost("/api/chat", async (ChatRequest request, AgentSession session, HttpC
     }, http.RequestAborted);
 });
 
-app.MapPost("/api/reset", async (AgentSession session, McpActivityLog mcpActivity) =>
+app.MapPost("/api/reset", async (AgentSession session, McpActivityLog mcpActivity, CoffeeMachineReports coffeeMachines) =>
 {
     await session.ResetAsync();
     mcpActivity.Clear();
+    coffeeMachines.Clear();
     return Results.NoContent();
 });
 
 // Wywołania narzędzi przez klienta MCP od podanego numeru kolejnego oraz aktualny stan mapy.
 // Przeglądarka odpytuje ten endpoint cyklicznie, bo turę prowadzi zewnętrzny host, a nie aplikacja.
-app.MapGet("/api/mcp/activity", (long? after, McpActivityLog mcpActivity, MapState mapState) => new
+app.MapGet("/api/mcp/activity", (long? after, McpActivityLog mcpActivity, MapState mapState, CoffeeMachineReports coffeeMachines) => new
 {
     Items = mcpActivity.After(after ?? 0),
     mcpActivity.LastSequence,
     Map = mapState.Snapshot,
+    CoffeeMachines = coffeeMachines.All,
 });
 
 app.MapMcp("/mcp");

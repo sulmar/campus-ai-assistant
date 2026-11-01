@@ -34,6 +34,7 @@ public sealed class McpServerTests : IClassFixture<WebApplicationFactory<Program
 
         _factory.Services.GetRequiredService<MapState>().Clear();
         _factory.Services.GetRequiredService<McpActivityLog>().Clear();
+        _factory.Services.GetRequiredService<CoffeeMachineReports>().Clear();
     }
 
     public async Task DisposeAsync() => await _client.DisposeAsync();
@@ -44,8 +45,16 @@ public sealed class McpServerTests : IClassFixture<WebApplicationFactory<Program
         var tools = await _client.ListToolsAsync();
 
         Assert.Equal(
-            [CampusTools.FindBuildingName, CampusTools.GetBuildingGeometryName, CampusTools.MarkEntranceName, CampusMapApp.ShowBuildingMapName],
-            tools.Select(t => t.Name).Order());
+            [
+                CampusMapApp.AskCoffeeMachineLocationName,
+                CampusTools.FindBuildingName,
+                CampusMapApp.FindCoffeeMachineName,
+                CampusTools.GetBuildingGeometryName,
+                CampusTools.MarkEntranceName,
+                CampusMapApp.ReportCoffeeMachineLocationName,  // zwraca je serwer; przed modelem ukrywa je dopiero host
+                CampusMapApp.ShowBuildingMapName,
+            ],
+            tools.Select(t => t.Name).Order(StringComparer.Ordinal));
 
         var markEntrance = tools.Single(t => t.Name == CampusTools.MarkEntranceName);
         var required = markEntrance.JsonSchema.GetProperty("required").EnumerateArray().Select(r => r.GetString());
@@ -223,6 +232,97 @@ public sealed class McpServerTests : IClassFixture<WebApplicationFactory<Program
         Assert.Contains("ui/initialize", contents.Text);
         Assert.Contains("appInfo:", contents.Text);  // pole wymagane przez spec MCP Apps (nie clientInfo)
         Assert.Contains("ui/notifications/tool-result", contents.Text);
+        Assert.Contains("tools/call", contents.Text);
+        Assert.Contains("ui/message", contents.Text);
+        Assert.Contains(CampusMapApp.ReportCoffeeMachineLocationName, contents.Text);
+        Assert.Contains(CampusMapApp.PickCoffeeMachineMode, contents.Text);
+    }
+
+    [Fact]
+    public async Task Report_tool_is_visible_only_to_the_app_and_ask_tool_opens_the_view()
+    {
+        var tools = await _client.ListToolsAsync();
+
+        var report = tools.Single(t => t.Name == CampusMapApp.ReportCoffeeMachineLocationName);
+        var visibility = report.ProtocolTool.Meta!["ui"]!["visibility"]!.AsArray().Select(v => v!.GetValue<string>());
+        Assert.Equal(["app"], visibility);
+
+        var ask = tools.Single(t => t.Name == CampusMapApp.AskCoffeeMachineLocationName);
+        Assert.Equal(CampusMapApp.MapViewUri, ask.ProtocolTool.Meta!["ui"]!["resourceUri"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task Ask_coffee_machine_returns_pick_mode_and_covers_hosts_with_and_without_ui()
+    {
+        var result = await _client.CallToolAsync(CampusMapApp.AskCoffeeMachineLocationName,
+            new Dictionary<string, object?> { ["buildingId"] = "a" });
+
+        Assert.NotEqual(true, result.IsError);
+        var data = Assert.IsType<JsonElement>(result.StructuredContent);
+        Assert.Equal(CampusMapApp.PickCoffeeMachineMode, data.GetProperty("mode").GetString());
+        Assert.Equal("A", data.GetProperty("buildingId").GetString());
+        Assert.Equal("FeatureCollection", data.GetProperty("geojson").GetProperty("type").GetString());
+        string text = Assert.IsType<TextContentBlock>(Assert.Single(result.Content)).Text;
+        Assert.Contains("wskazanie ekspresu na mapie", text);
+        Assert.Contains("opis słowny", text);
+    }
+
+    [Fact]
+    public async Task Find_coffee_machine_before_any_report_returns_unknown()
+    {
+        var result = await _client.CallToolAsync(CampusMapApp.FindCoffeeMachineName,
+            new Dictionary<string, object?> { ["buildingId"] = "A" });
+
+        Assert.False(Json(result).GetProperty("known").GetBoolean());
+        Assert.Equal("A", Json(result).GetProperty("buildingId").GetString());
+    }
+
+    [Fact]
+    public async Task Reported_coffee_machine_is_returned_by_find_and_shown_on_building_map()
+    {
+        var report = await _client.CallToolAsync(CampusMapApp.ReportCoffeeMachineLocationName,
+            new Dictionary<string, object?> { ["buildingId"] = "A", ["x"] = 2.0, ["y"] = 30.0 });
+
+        Assert.NotEqual(true, report.IsError);
+        var saved = Assert.IsType<JsonElement>(report.StructuredContent);
+        Assert.True(saved.GetProperty("insideBuilding").GetBoolean());
+        Assert.Equal("A1", saved.GetProperty("nearestEntranceId").GetString());
+        Assert.Equal(2.0, saved.GetProperty("nearestEntranceDistanceM").GetDouble());
+
+        var found = Json(await _client.CallToolAsync(CampusMapApp.FindCoffeeMachineName,
+            new Dictionary<string, object?> { ["buildingId"] = "a" }));
+        Assert.True(found.GetProperty("known").GetBoolean());
+        Assert.Equal(2.0, found.GetProperty("x").GetDouble());
+        Assert.Equal(30.0, found.GetProperty("y").GetDouble());
+
+        var map = await _client.CallToolAsync(CampusMapApp.ShowBuildingMapName,
+            new Dictionary<string, object?> { ["buildingId"] = "A" });
+        var marker = Assert.IsType<JsonElement>(map.StructuredContent).GetProperty("coffeeMachine");
+        Assert.Equal(2.0, marker.GetProperty("x").GetDouble());
+    }
+
+    [Fact]
+    public async Task New_report_replaces_previous_one_for_the_building()
+    {
+        foreach (double x in new[] { 2.0, 10.0 })
+            await _client.CallToolAsync(CampusMapApp.ReportCoffeeMachineLocationName,
+                new Dictionary<string, object?> { ["buildingId"] = "A", ["x"] = x, ["y"] = 30.0 });
+
+        var report = Assert.Single(_factory.Services.GetRequiredService<CoffeeMachineReports>().All);
+        Assert.Equal(10.0, report.X);
+    }
+
+    [Theory]
+    [InlineData("D", 2.0, 30.0, "Dostępne budynki: A, B, C")]
+    [InlineData("A", 100000.0, 30.0, "poza mapą budynku A")]
+    public async Task Report_rejects_unknown_building_or_point_outside_the_map(string buildingId, double x, double y, string error)
+    {
+        var result = await _client.CallToolAsync(CampusMapApp.ReportCoffeeMachineLocationName,
+            new Dictionary<string, object?> { ["buildingId"] = buildingId, ["x"] = x, ["y"] = y });
+
+        Assert.True(result.IsError);
+        Assert.Contains(error, Json(result).GetProperty("error").GetString());
+        Assert.Empty(_factory.Services.GetRequiredService<CoffeeMachineReports>().All);
     }
 
     [Fact]
