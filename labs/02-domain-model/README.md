@@ -59,6 +59,20 @@ Zachowanie dodajemy pionowymi wycinkami (Vertical Slice): każdy przypadek użyc
 
 Dokładna nazwa ma pierwszeństwo przed dopasowaniem częściowym. Bez tego student nie mógłby wybrać sali `A101`, gdyby istniała też `A1011`.
 
+[UC-03](../../docs/use-cases/UC-03-find-coffee-machine.md) to `Features/FindCoffeeMachine/`. Nie ma on danych wejściowych, więc nie potrzebuje klasy zapytania:
+
+| Krok UC-03 | Kod |
+|---|---|
+| 1. Pytanie w języku naturalnym | Poza wycinkiem: pytanie trzeba rozpoznać wcześniej |
+| 2–4. Wyszukanie automatów, sprawdzenie dostępności i wybór czynnych | `FindCoffeeMachineUseCase.Execute` |
+| 5. Prezentacja automatów i lokalizacji | `FindCoffeeMachineResult.InService` |
+| 3a. Nieznany status | `FindCoffeeMachineResult.UnknownAvailability` |
+| 4a. Brak czynnych automatów | Pusta lista `InService` |
+
+Oba wycinki różnią się użyciem modelu. UC-01 traktuje wszystkie miejsca jednakowo, więc korzysta z klasy bazowej `Place`. UC-03 potrzebuje dostępności, którą ma tylko automat, więc pracuje na `CoffeeMachine`.
+
+Dostępność jest daną wejściową, a nie wynikiem wyliczenia z godzin pracy, bo znaczenie słowa „czynny” to nadal pytanie otwarte w [wymaganiach](../../docs/requirements.md).
+
 ## Reguły spoza samego diagramu
 
 - `Route` odrzuca jednakowy początek i cel, bo słownik mówi o drodze łączącej dwie lokalizacje.
