@@ -15,3 +15,6 @@ Pojęcia opisujemy językiem dziedziny, dla której tworzymy system, a nie języ
 | Automat z kawą | Urządzenie umożliwiające samodzielny zakup kawy. |
 | Lokalizacja | Położenie miejsca lub obiektu na kampusie. |
 | Trasa | Droga łącząca dwie lokalizacje. |
+| Kampus | Teren uczelni wraz z budynkami i urządzeniami, które się na nim znajdują. |
+| Miejsce | Sala, budynek lub automat z kawą, czyli to, co student może wyszukać na kampusie i co ma lokalizację. |
+| Dostępność | Informacja, czy automat z kawą jest czynny, nieczynny, czy jego stan jest nieznany. |
