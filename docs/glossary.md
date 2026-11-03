@@ -15,3 +15,7 @@ Pojęcia opisujemy językiem dziedziny, dla której tworzymy system, a nie języ
 | Automat z kawą | Urządzenie umożliwiające samodzielny zakup kawy. |
 | Lokalizacja | Położenie miejsca lub obiektu na kampusie. |
 | Trasa | Droga łącząca dwie lokalizacje. |
+| USOS | Uniwersytecki System Obsługi Studenta zawierający plan zajęć i listę studenów. |
+
+---
+
