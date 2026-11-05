@@ -12,7 +12,7 @@ To podstawa do porównania trzech wariantów rozwiązania tego samego problemu:
 | 2. Agent Skill | skrypt dostarczony ze Skillem | `get_distance_matrix` → skrypt → `show_delivery_plan` |
 | 3. Code Execution | kod wygenerowany przez agenta | `get_campus_graph` → kod → `show_delivery_plan` |
 
-W tym laboratorium działa wariant 1. Warianty 2 i 3 mają już przygotowane dane (`get_distance_matrix`, `get_campus_graph`) i wspólną wizualizację (`show_delivery_plan`). Same Skills i Code Execution dodamy na kolejnych zajęciach.
+Działają warianty 1 i 2 (Skill [`delivery-route`](.claude/skills/delivery-route/SKILL.md)). Wariant 3 ma już przygotowane dane (`get_campus_graph`) i wspólną wizualizację (`show_delivery_plan`); Code Execution dodamy na kolejnych zajęciach.
 
 ## Uruchomienie
 
@@ -26,6 +26,32 @@ W tym katalogu uruchom `claude` i zatwierdź serwer `tupzak` z `.mcp.json`. Pote
 > Startuję z parkingu P1. Mam dostarczyć paczki do budynków A, B i C. Zaplanuj optymalną trasę.
 
 „P1” pasuje do trzech parkingów (`A-P1`, `B-P1`, `C-P1`), więc agent powinien dopytać, o który chodzi. Trasa pojawi się na mapie w przeglądarce (http://localhost:5144), a w Claude Desktop także w rozmowie, jako MCP App.
+
+## Skill `delivery-route` (wariant 2)
+
+```text
+.claude/skills/delivery-route/
+├── SKILL.md                      # kiedy użyć, kroki, warunki zatrzymania, kryterium sukcesu
+├── references/answer-format.md   # format odpowiedzi dla kuriera (czytany na końcu)
+└── scripts/optimize_route.py     # permutacje kolejności × wejścia budynków, odległości z get_distance_matrix
+```
+
+Claude Code znajduje Skill sam, gdy uruchomisz `claude` w tym katalogu. Na pytanie o trasę dostaw ładuje `SKILL.md` i prowadzi kuriera przez kroki:
+
+1. `find_place` — przy „P1” dopyta, o który parking chodzi.
+2. `get_distance_matrix` z punktem startowym i budynkami.
+3. Skrypt `optimize_route.py` — wynik JSON trafia na wejście skryptu.
+4. `show_delivery_plan` z kolejnością wejść policzoną przez skrypt.
+
+Skrypt to rozwinięcie przykładu z permutacjami. Słownik odległości wypełnia wynik z grafu kampusu, a dla każdego budynku skrypt sprawdza wszystkie jego wejścia (`itertools.product`). Można go uruchomić samodzielnie:
+
+```bash
+python3 .claude/skills/delivery-route/scripts/optimize_route.py --start A-P1 --deliveries A B C < macierz.json
+```
+
+Na danych demonstracyjnych skrypt daje te same kolejności i długości co `optimize_deliveries`. Różni się tylko sposób wyboru wejść: skrypt sprawdza wszystkie kombinacje (288 tras dla 3 budynków), a aplikacja programowaniem dynamicznym (6 kolejności).
+
+Dla porównania wariantów zapytaj w Claude Code najpierw ze Skillem, a potem wprost: „Użyj optimize_deliveries…”.
 
 ## Czego brakowało w danych
 
@@ -106,6 +132,8 @@ Wynik dla danych demonstracyjnych:
 
 - **MCP App** (`Mcp/BuildingMapView.html`). Ten sam widok co `show_building_map` pokazuje teraz cały kampus z trasą, startem (S) i ponumerowanymi punktami dostaw. Schody są oznaczone na czerwono. Kliknięcie punktu pokazuje budynek, wybrane wejście i etap trasy.
 - **Strona w przeglądarce** (`wwwroot`). Rysuje aleje kampusu i ostatni plan dostaw. Przydaje się w Claude Code, który nie wyświetla MCP Apps.
+  Przyciski w nagłówku uruchamiają dwa scenariusze („Dostawy A, B, C” oraz „Wózek i powrót”).
+- **Podgląd Skills** (`wwwroot/skills.html`). Fioletowy link „Skill: …” w nagłówku otwiera w nowej karcie pliki Skilla, czyli `SKILL.md`, referencje i skrypty, w takiej postaci, w jakiej czyta je agent. Frontmatter jest wyróżniony, bo tylko on jest w kontekście od początku. Pliki serwuje `/api/skills` (tylko odczyt, bez wychodzenia poza katalog Skilla).
 
 ## Testy
 

@@ -37,7 +37,7 @@ public sealed class DeliveryTools(CampusNetwork network, DeliveryPlanner planner
             CampusTools.JsonOptions),
         AIFunctionFactory.Create(GetDistanceMatrix, GetDistanceMatrixName,
             "Zwraca odległości po ścieżkach (w metrach) między każdą parą podanych punktów. Budynek jest rozwijany " +
-            "do wszystkich jego wejść. null oznacza brak trasy.",
+            "do wszystkich jego wejść. Para bez distanceM oznacza brak trasy.",
             CampusTools.JsonOptions),
         AIFunctionFactory.Create(OptimizeDeliveries, OptimizeDeliveriesName,
             "Wyznacza optymalną kolejność dostaw do budynków i wybiera wejścia, minimalizując łączną długość trasy po ścieżkach. " +

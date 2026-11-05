@@ -17,6 +17,7 @@ builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Encoder = Cam
 builder.Services.AddSingleton(ollamaOptions);
 builder.Services.AddSingleton(agentOptions);
 builder.Services.AddSingleton(_ => BuildingRepository.LoadFromDirectory(dataDirectory));
+builder.Services.AddSingleton(_ => new SkillCatalog(Path.Combine(builder.Environment.ContentRootPath, builder.Configuration["SkillsDirectory"] ?? "../../.claude/skills")));
 builder.Services.AddSingleton(sp => CampusNetwork.LoadFromDirectory(dataDirectory, sp.GetRequiredService<BuildingRepository>()));
 builder.Services.AddSingleton<DeliveryPlanner>();
 builder.Services.AddSingleton<MapState>();
@@ -99,6 +100,11 @@ app.MapGet("/api/mcp/activity", (long? after, McpActivityLog mcpActivity, MapSta
     mcpActivity.LastSequence,
     Map = mapState.Snapshot,
 });
+
+// Podgląd Skills (tylko odczyt) dla prowadzącego: lista i treść plików, tak jak widzi je agent.
+app.MapGet("/api/skills", (SkillCatalog skills) => skills.All());
+app.MapGet("/api/skills/{name}/{**path}", (string name, string path, SkillCatalog skills) =>
+    skills.ReadFile(name, path) is { } text ? Results.Text(text, "text/plain; charset=utf-8") : Results.NotFound());
 
 app.MapMcp("/mcp");
 

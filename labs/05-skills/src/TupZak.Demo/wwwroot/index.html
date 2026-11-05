@@ -12,13 +12,12 @@
     <div class="brand">
       <h1>Tup Żak <span>· Skills</span></h1>
       <div id="model-info" class="badge">model: …</div>
+      <span id="skills-links" class="skills-links" title="Skills z katalogu .claude/skills — te same, z których korzysta Claude Code"></span>
       <div id="mcp-info" class="badge mcp" title="Podłączenie: claude mcp add --transport http tupzak http://localhost:5144/mcp">MCP: …/mcp</div>
     </div>
     <nav>
-      <button class="scenario" data-prompt="Znajdź budynek A i zaznacz wejście od strony parkingu, mniej więcej w połowie długości budynku.">1 · Poprawne rozpoznanie</button>
-      <button class="scenario" data-prompt="Zaznacz wejście z tyłu budynku A.">2 · Niejednoznaczność</button>
-      <button class="scenario" data-prompt="Znajdź wejście do budynku D.">3 · Nieistniejący budynek</button>
-      <button class="scenario" data-prompt="Startuję z parkingu A-P1. Mam dostarczyć paczki do budynków C, A i B. Zaplanuj optymalną trasę.">4 · Dostawy A, B, C</button>
+      <button class="scenario" data-prompt="Startuję z parkingu A-P1. Mam dostarczyć paczki do budynków C, A i B. Zaplanuj optymalną trasę.">Dostawy A, B, C</button>
+      <button class="scenario" data-prompt="Startuję z parkingu C-P1 z wózkiem. Dostarczam paczki do budynków A i B, a potem wracam na parking. Zaplanuj trasę.">Wózek i powrót</button>
       <button id="reset" class="secondary">Wyczyść</button>
     </nav>
   </header>
@@ -28,7 +27,7 @@
       <h2>1 · Rozmowa z agentem</h2>
       <div id="chat" class="scroll"></div>
       <form id="chat-form">
-        <input id="chat-input" type="text" autocomplete="off" placeholder="Np. Znajdź budynek B i zaznacz wejście od strony dziedzińca">
+        <input id="chat-input" type="text" autocomplete="off" placeholder="Np. Startuję z parkingu B-P1, dostarczam do A i C. Zaplanuj trasę.">
         <button type="submit">Wyślij</button>
       </form>
     </section>

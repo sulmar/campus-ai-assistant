@@ -337,6 +337,15 @@ window.addEventListener('resize', () => map.invalidateSize());
 const updateLabels = () => document.getElementById('map').classList.toggle('zoomed-out', map.getZoom() < 1.5);
 map.on('zoomend', updateLabels);
 
+// Linki do podglądu Skills (otwierają się w nowej karcie, żeby nie przerywać rozmowy).
+async function loadSkillLinks() {
+  const skills = await (await fetch('/api/skills')).json();
+  document.getElementById('skills-links').innerHTML = skills.length
+    ? skills.map(s => `<a class="badge skill" href="skills.html#${encodeURIComponent(s.name)}" target="_blank" title="${escapeHtml(s.description)}">Skill: ${escapeHtml(s.name)}</a>`).join('')
+    : '<span class="badge">brak Skills</span>';
+}
+
 loadInfo();
+loadSkillLinks();
 loadMap().then(pollMcp);
 input.focus();

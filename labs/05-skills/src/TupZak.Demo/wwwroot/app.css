@@ -191,3 +191,9 @@ details .reasoning { white-space: pre-wrap; font-size: 15px; color: var(--muted)
 .leaflet-tooltip.route-summary::before { display: none; }
 .lg.route { height: 0; border-top: 5px solid #ea580c; border-radius: 0; }
 .lg.stairs { height: 0; border-top: 3px dotted #dc2626; border-radius: 0; }
+
+/* ---------- linki do Skills ---------- */
+
+.skills-links { display: inline-flex; gap: 8px; }
+a.badge.skill { background: #a21caf; color: #fdf4ff; text-decoration: none; }
+a.badge.skill:hover { background: #86198f; }
