@@ -90,7 +90,11 @@ public sealed class ToolExecutor(IEnumerable<AIFunction> functions)
 
         foreach (var (name, value) in arguments)
         {
-            if (!properties[name].TryGetProperty("type", out var type) || type.GetString() != "string")
+            // "type" bywa tekstem ("string") albo tablicą dla typów nullable (["string", "null"], ["array", "null"]).
+            if (!properties[name].TryGetProperty("type", out var type) || !AllowsType(type, "string"))
+                continue;
+
+            if ((value is null || value is JsonElement { ValueKind: JsonValueKind.Null }) && AllowsType(type, "null"))
                 continue;
 
             string? text = value switch
@@ -108,4 +112,11 @@ public sealed class ToolExecutor(IEnumerable<AIFunction> functions)
 
         return null;
     }
+
+    private static bool AllowsType(JsonElement type, string name) => type.ValueKind switch
+    {
+        JsonValueKind.String => type.GetString() == name,
+        JsonValueKind.Array => type.EnumerateArray().Any(t => t.ValueKind == JsonValueKind.String && t.GetString() == name),
+        _ => false,
+    };
 }

@@ -110,4 +110,17 @@ public class ToolExecutorTests
 
         Assert.Contains("awaria", execution.Error);
     }
+
+    [Fact]
+    public void Nullable_parameters_with_type_array_are_validated()
+    {
+        // Parametry nullable mają w schemacie "type": ["array", "null"] / ["string", "null"], a nie pojedynczy tekst.
+        var function = AIFunctionFactory.Create(
+            (string start, string[]? avoidPathIds = null, string? note = null) => start, "probe");
+        var args = JsonSerializer.Deserialize<Dictionary<string, object?>>(
+            """{ "start": "A-P1", "avoidPathIds": ["W-02"], "note": null }""");
+
+        Assert.Null(ToolExecutor.ValidateArguments(function, args));
+        Assert.Contains("nie może być pusty", ToolExecutor.ValidateArguments(function, new Dictionary<string, object?> { ["start"] = "A-P1", ["note"] = " " }));
+    }
 }
