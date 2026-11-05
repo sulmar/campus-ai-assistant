@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tup Żak · Skills</title>
+  <link rel="stylesheet" href="app.css">
+  <style>
+    /* Podgląd Skills: lista plików po lewej, treść wybranego pliku po prawej. */
+    body { height: 100vh; display: flex; flex-direction: column; }
+    .skills-main { flex: 1; min-height: 0; display: grid; grid-template-columns: 340px 1fr; gap: 12px; padding: 12px; }
+    .skills-main .panel { min-height: 0; display: flex; flex-direction: column; }
+    .skill-list { overflow: auto; padding: 4px 12px 12px; }
+    .skill-list h3 { margin: 14px 0 4px; font-family: var(--mono); font-size: 17px; color: #a21caf; }
+    .skill-list p { margin: 0 0 8px; font-size: 14px; color: var(--muted); }
+    .skill-list button { display: block; width: 100%; text-align: left; margin: 3px 0; padding: 6px 10px; border-radius: 6px;
+      background: #f1f5f9; color: #0f172a; border: 1px solid var(--border); font-family: var(--mono); font-size: 14px; }
+    .skill-list button.active { background: #a21caf; color: #fff; border-color: #a21caf; }
+    .file-head { display: flex; align-items: baseline; gap: 12px; padding: 0 12px; }
+    .file-head .meta { margin-left: auto; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+    #content { flex: 1; max-height: none; overflow: auto; margin: 8px 12px 12px; padding: 14px 16px; border-radius: 8px; background: #0f172a; color: #e2e8f0;
+      font: 15px/1.5 var(--mono); white-space: pre-wrap; }
+    #content .fm { color: #f0abfc; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>Tup Żak <span>· Skills</span></h1>
+      <div class="badge">.claude/skills — te same pliki czyta Claude Code</div>
+    </div>
+    <nav><a class="badge" href="/">← Wróć do aplikacji</a></nav>
+  </header>
+
+  <main class="skills-main">
+    <section class="panel">
+      <h2>Skills i ich pliki</h2>
+      <div id="list" class="skill-list"></div>
+    </section>
+    <section class="panel">
+      <div class="file-head"><h2 id="title">Wybierz plik</h2><span id="meta" class="meta"></span></div>
+      <pre id="content"></pre>
+    </section>
+  </main>
+
+  <script>
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    async function open(skill, file, button) {
+      document.querySelectorAll('.skill-list button').forEach(b => b.classList.toggle('active', b === button));
+      const text = await (await fetch(`/api/skills/${encodeURIComponent(skill)}/${file.split('/').map(encodeURIComponent).join('/')}`)).text();
+      document.getElementById('title').textContent = `${skill}/${file}`;
+      document.getElementById('meta').textContent = `${text.split('\n').length} linii · ${text.length} znaków`;
+      // Frontmatter (name + description) wyróżniamy: tylko on jest w kontekście agenta od początku.
+      const html = esc(text).replace(/^---\n[\s\S]*?\n---/, m => `<span class="fm">${m}</span>`);
+      document.getElementById('content').innerHTML = html;
+      history.replaceState(null, '', `#${encodeURIComponent(skill)}/${file}`);
+    }
+
+    async function load() {
+      const skills = await (await fetch('/api/skills')).json();
+      const list = document.getElementById('list');
+      if (!skills.length) { list.innerHTML = '<p>Brak Skills w katalogu .claude/skills.</p>'; return; }
+
+      for (const skill of skills) {
+        list.insertAdjacentHTML('beforeend', `<h3>${esc(skill.name)}</h3><p>${esc(skill.description)}</p>`);
+        for (const file of skill.files) {
+          const button = document.createElement('button');
+          button.textContent = file;
+          button.dataset.key = `${skill.name}/${file}`;
+          button.addEventListener('click', () => open(skill.name, file, button));
+          list.appendChild(button);
+        }
+      }
+
+      // #nazwa-skilla albo #nazwa-skilla/ścieżka/pliku — domyślnie SKILL.md.
+      const hash = decodeURIComponent(location.hash.slice(1));
+      const [name, ...rest] = hash.split('/');
+      const skill = skills.find(s => s.name === name) ?? skills[0];
+      const file = skill.files.includes(rest.join('/')) ? rest.join('/') : 'SKILL.md';
+      open(skill.name, file, [...list.querySelectorAll('button')].find(b => b.dataset.key === `${skill.name}/${file}`));
+    }
+
+    load();
+  </script>
+</body>
+</html>

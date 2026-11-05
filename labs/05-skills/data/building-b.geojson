@@ -1,0 +1,71 @@
+{
+  "type": "FeatureCollection",
+  "name": "Budynek B",
+  "description": "Fikcyjne dane demonstracyjne. Lokalny układ współrzędnych w metrach: x rośnie na wschód, y rośnie na północ.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "id": "B", "kind": "building", "name": "Budynek B" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[100, 0], [160, 0], [160, 50], [145, 50], [145, 20], [115, 20], [115, 50], [100, 50], [100, 0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "B1", "kind": "entrance", "buildingId": "B", "name": "Wejście B1" },
+      "geometry": { "type": "Point", "coordinates": [130, 0] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "B2", "kind": "entrance", "buildingId": "B", "name": "Wejście B2" },
+      "geometry": { "type": "Point", "coordinates": [130, 20] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "B3", "kind": "entrance", "buildingId": "B", "name": "Wejście B3" },
+      "geometry": { "type": "Point", "coordinates": [100, 35] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "B4", "kind": "entrance", "buildingId": "B", "name": "Wejście B4" },
+      "geometry": { "type": "Point", "coordinates": [160, 35] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "B-D1", "kind": "courtyard", "name": "Dziedziniec" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[115, 20], [145, 20], [145, 50], [115, 50], [115, 20]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "B-P1", "kind": "parking", "name": "Parking" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[172, 8], [200, 8], [200, 46], [172, 46], [172, 8]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "B-S1", "kind": "path", "name": "Ścieżka piesza 1" },
+      "geometry": { "type": "LineString", "coordinates": [[172, 35], [160, 35]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "B-S2", "kind": "path", "name": "Ścieżka piesza 2" },
+      "geometry": { "type": "LineString", "coordinates": [[130, -25], [130, 0]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "B-S3", "kind": "path", "name": "Ścieżka piesza 3" },
+      "geometry": { "type": "LineString", "coordinates": [[130, 70], [130, 20]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "B-L1", "kind": "landmark", "name": "Fontanna" },
+      "geometry": { "type": "Point", "coordinates": [130, 38] }
+    }
+  ]
+}
