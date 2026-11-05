@@ -1,0 +1,57 @@
+{
+  "type": "FeatureCollection",
+  "name": "Ścieżki kampusu",
+  "description": "Fikcyjne dane demonstracyjne: aleje łączące ścieżki przy budynkach w jedną sieć. Lokalny układ współrzędnych w metrach: x rośnie na wschód, y rośnie na północ. accessible=false oznacza schody (niedostępne dla wózka), closed=true — ścieżkę zamkniętą.",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "id": "W-01", "kind": "path", "name": "Aleja Główna (zachód)" },
+      "geometry": { "type": "LineString", "coordinates": [[-28, -25], [12, -25], [46, -25], [80, -25], [130, -25]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "W-02", "kind": "path", "name": "Aleja Główna (wschód)" },
+      "geometry": { "type": "LineString", "coordinates": [[130, -25], [186, -25], [280, -25], [320, -25]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "W-03", "kind": "path", "name": "Dojście od parkingu A" },
+      "geometry": { "type": "LineString", "coordinates": [[-28, 12], [-28, -25]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "W-04", "kind": "path", "name": "Schody przy przystanku", "accessible": false },
+      "geometry": { "type": "LineString", "coordinates": [[46, 30], [46, -25]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "W-05", "kind": "path", "name": "Dojście do wejścia B3" },
+      "geometry": { "type": "LineString", "coordinates": [[100, 35], [80, 35], [80, -25]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "W-06", "kind": "path", "name": "Dojście od parkingu B" },
+      "geometry": { "type": "LineString", "coordinates": [[186, 8], [186, -25]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "W-07", "kind": "path", "name": "Aleja Północna" },
+      "geometry": { "type": "LineString", "coordinates": [[130, 70], [250, 84]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "W-08", "kind": "path", "name": "Dojście od parkingu C" },
+      "geometry": { "type": "LineString", "coordinates": [[298, 42], [320, 42], [320, 10], [320, -25]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "W-09", "kind": "path", "name": "Dojście do wejścia C4" },
+      "geometry": { "type": "LineString", "coordinates": [[300, 10], [320, 10]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "W-10", "kind": "path", "name": "Łącznik północny" },
+      "geometry": { "type": "LineString", "coordinates": [[130, 70], [80, 70], [80, 35]] }
+    }
+  ]
+}

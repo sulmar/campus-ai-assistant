@@ -1,0 +1,12 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "properties": { "id": "M", "kind": "building", "name": "Budynek M" },
+      "geometry": { "type": "Polygon", "coordinates": [[[290, 10], [310, 10], [310, 30], [290, 30], [290, 10]]] } },
+    { "type": "Feature", "properties": { "id": "M1", "kind": "entrance", "buildingId": "M", "name": "Wejście M1" }, "geometry": { "type": "Point", "coordinates": [300, 10] } },
+    { "type": "Feature", "properties": { "id": "M2", "kind": "entrance", "buildingId": "M", "name": "Wejście M2" }, "geometry": { "type": "Point", "coordinates": [290, 15] } },
+    { "type": "Feature", "properties": { "id": "M-S1", "kind": "path", "name": "Dojście do M1" }, "geometry": { "type": "LineString", "coordinates": [[300, 0], [300, 10]] } },
+    { "type": "Feature", "properties": { "id": "M-S2", "kind": "path", "name": "Dojście do M2" }, "geometry": { "type": "LineString", "coordinates": [[280, 0], [280, 15], [290, 15]] } },
+    { "type": "Feature", "properties": { "id": "M-P1", "kind": "parking", "name": "Parking wschodni" }, "geometry": { "type": "Polygon", "coordinates": [[[310, -10], [340, -10], [340, 9], [310, 9], [310, -10]]] } }
+  ]
+}

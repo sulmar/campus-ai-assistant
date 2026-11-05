@@ -1,0 +1,13 @@
+{
+  "type": "FeatureCollection",
+  "description": "Testowy kampus: aleja wzdłuż y=0. Odległości można policzyć w pamięci (patrz DeliveryPlannerTests).",
+  "features": [
+    { "type": "Feature", "properties": { "id": "W-00", "kind": "path", "name": "Wyjście z parkingu zachodniego" }, "geometry": { "type": "LineString", "coordinates": [[-10, 0], [0, 0]] } },
+    { "type": "Feature", "properties": { "id": "W-01", "kind": "path", "name": "Aleja 0–100" }, "geometry": { "type": "LineString", "coordinates": [[0, 0], [100, 0]] } },
+    { "type": "Feature", "properties": { "id": "W-02", "kind": "path", "name": "Schody 100–200", "accessible": false }, "geometry": { "type": "LineString", "coordinates": [[100, 0], [200, 0]] } },
+    { "type": "Feature", "properties": { "id": "W-03", "kind": "path", "name": "Aleja 200–300" }, "geometry": { "type": "LineString", "coordinates": [[200, 0], [300, 0]] } },
+    { "type": "Feature", "properties": { "id": "W-04", "kind": "path", "name": "Wyjście z parkingu wschodniego" }, "geometry": { "type": "LineString", "coordinates": [[300, 0], [310, 0]] } },
+    { "type": "Feature", "properties": { "id": "W-05", "kind": "path", "name": "Objazd bez schodów" }, "geometry": { "type": "LineString", "coordinates": [[100, 0], [100, -50], [200, -50], [200, 0]] } },
+    { "type": "Feature", "properties": { "id": "W-06", "kind": "path", "name": "Ścieżka zamknięta (remont)", "closed": true }, "geometry": { "type": "LineString", "coordinates": [[300, 0], [500, 0], [510, 0]] } }
+  ]
+}

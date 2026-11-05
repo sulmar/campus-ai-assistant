@@ -1,0 +1,9 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "properties": { "id": "N", "kind": "building", "name": "Budynek N" },
+      "geometry": { "type": "Polygon", "coordinates": [[[500, 10], [520, 10], [520, 30], [500, 30], [500, 10]]] } },
+    { "type": "Feature", "properties": { "id": "N1", "kind": "entrance", "buildingId": "N", "name": "Wejście N1" }, "geometry": { "type": "Point", "coordinates": [510, 10] } },
+    { "type": "Feature", "properties": { "id": "N-S1", "kind": "path", "name": "Dojście do N1" }, "geometry": { "type": "LineString", "coordinates": [[510, 0], [510, 10]] } }
+  ]
+}

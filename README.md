@@ -16,6 +16,7 @@ Na początek:
 
 - [03 · Tool Calling](labs/03-tool-calling/README.md) — agent Tup Żak wybiera wejście do budynku na podstawie geometrii GeoJSON (.NET 10, Microsoft.Extensions.AI, Ollama, Leaflet)
 - [04 · MCP](labs/04-mcp/README.md) — te same narzędzia udostępnione jako serwer MCP (Streamable HTTP); rozmowa z agentem w Claude Code z podglądem na żywo na mapie
+- [05 · Optymalizacja dostaw](labs/05-skills/README.md) — graf ścieżek kampusu, optymalna kolejność dostaw (Dijkstra + permutacje) jako narzędzia MCP i trasa w MCP App; podstawa do porównania z Agent Skills i Code Execution
 
 ## Struktura
 
@@ -28,7 +29,8 @@ campus-ai-assistant/
 │   └── requirements.md
 ├── labs/
 │   ├── 03-tool-calling/
-│   └── 04-mcp/
+│   ├── 04-mcp/
+│   └── 05-skills/
 └── src/
 ```
 
